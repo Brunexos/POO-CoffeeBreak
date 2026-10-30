@@ -1,4 +1,4 @@
-# ☕ Coffee Break POO
+# ☕ Coffee Break Java
 
 > Um sistema de gerenciamento de coffee break universitário, desenvolvido em **Java** para a disciplina de **Programação Orientada a Objetos (POO)**.
 
