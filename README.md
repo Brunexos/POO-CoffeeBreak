@@ -105,6 +105,7 @@ Projeto desenvolvido por uma equipe de **3 integrantes**.
 - Integrante 1 — *Bruno César de Bortoli*
 - Integrante 2 — *Felipe Cardim Gomes*
 - Integrante 3 — *Paulo Rogerio*
+- Integrante 4 - *Filipe Gandra*
 
 **Disciplina:** Programação Orientada a Objetos  
 **Professor:** Artur Henrique Kronbauer  
