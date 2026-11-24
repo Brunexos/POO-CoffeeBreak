@@ -1,11 +1,9 @@
 package Progama;
-import java.util.Scanner;
+
+/** Mantem o nome antigo funcionando enquanto o projeto passa a usar Programa.java. */
 public class Progama {
-    public static void main(String[] args){
-        Scanner sc = new Scanner(System.in);
-
-        
-        sc.close();
+    /** Encaminha a execucao do nome antigo para a classe principal Programa. */
+    public static void main(String[] args) {
+        Programa.main(args);
     }
-
 }

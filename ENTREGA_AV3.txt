@@ -1,0 +1,1026 @@
+COFFEE BREAK POO - AV3 - CODIGO FONTE COMPLETO
+Classe principal: Progama.Programa
+
+===== Entidades\Bebida.java =====
+package Entidades;
+
+/** Produto medido por volume em mililitros. */
+public class Bebida extends Produto {
+    private Integer volumeML;
+
+    /** Cria uma bebida usando os atributos herdados de Produto. */
+    public Bebida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Integer volumeML) {
+        super(nome, preco, quantidadeEstoque, codigo);
+        this.volumeML = volumeML;
+    }
+
+    /** Retorna o volume da bebida. */
+    public Integer getVolumeML() {
+        return volumeML;
+    }
+
+    /** Altera o volume da bebida. */
+    public void setVolumeML(Integer volumeML) {
+        this.volumeML = volumeML;
+    }
+
+    /** Acrescenta o volume a descricao herdada de Produto. */
+    @Override
+    public String toString() {
+        return super.toString() + "\n" + "volumeML: " + volumeML;
+    }
+}
+
+
+===== Entidades\Comida.java =====
+package Entidades;
+
+/** Produto medido por peso em gramas. */
+public class Comida extends Produto{
+    private Double pesoGramas;
+
+    /** Cria uma comida usando os atributos herdados de Produto. */
+    public Comida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Double pesoGramas) {
+        super(nome, preco, quantidadeEstoque, codigo);
+        this.pesoGramas = pesoGramas;
+    }
+
+    /** Retorna o peso da porcao. */
+    public Double getPesoGramas() {
+        return pesoGramas;
+    }
+
+    /** Altera o peso da porcao. */
+    public void setPesoGramas(Double pesoGramas) {
+        this.pesoGramas = pesoGramas;
+    }
+
+    /** Acrescenta o peso a descricao herdada de Produto. */
+    @Override
+    public String toString() {
+        return super.toString() + "\n" + "pesoGramas: " + pesoGramas;
+    }
+}
+
+
+===== Entidades\ItemPedido.java =====
+package Entidades;
+
+/** Um produto e sua quantidade dentro de um pedido. */
+public class ItemPedido {
+    private final Produto produto;
+    private final int quantidade;
+    private final double precoUnitario;
+
+    /** Guarda o preco no momento da inclusao para preservar o valor do pedido. */
+    public ItemPedido(Produto produto, int quantidade) {
+        if (produto == null || produto.getPreco() == null
+                || !Double.isFinite(produto.getPreco()) || produto.getPreco() <= 0) {
+            throw new IllegalArgumentException("Produto e preco devem ser validos.");
+        }
+        if (quantidade <= 0) {
+            throw new IllegalArgumentException("A quantidade deve ser positiva.");
+        }
+        this.produto = produto;
+        this.quantidade = quantidade;
+        this.precoUnitario = produto.getPreco();
+    }
+
+    /** Retorna o produto associado ao item. */
+    public Produto getProduto() {
+        return produto;
+    }
+
+    /** Retorna o numero de unidades. */
+    public int getQuantidade() {
+        return quantidade;
+    }
+
+    /** Retorna o preco registrado quando o item foi criado. */
+    public double getPrecoUnitario() {
+        return precoUnitario;
+    }
+
+    /** Calcula o valor deste item sem depender de alteracoes futuras no cardapio. */
+    public double calcularSubtotal() {
+        return precoUnitario * quantidade;
+    }
+}
+
+
+===== Entidades\Pedido.java =====
+package Entidades;
+
+import java.util.ArrayList;
+import Enums.StatusPedido;
+import Interfaces.FormaPagamento;
+
+/** Pedido composto por itens e associado a uma forma de pagamento. */
+public class Pedido {
+    private Integer codigo;
+    private ArrayList<ItemPedido> itens;
+    private FormaPagamento formaPagamento;
+    private StatusPedido status;
+
+    /** Recebe os itens e a forma de pagamento; nao cria essas dependencias. */
+    public Pedido(Integer codigo, ArrayList<ItemPedido> itens, FormaPagamento formaPagamento) {
+        setCodigo(codigo);
+        validarItens(itens);
+        setFormaPagamento(formaPagamento);
+        this.itens = new ArrayList<>(itens);
+        this.status = StatusPedido.PENDENTE;
+    }
+
+    /** Soma os subtotais de todos os itens do pedido. */
+    public double calcularTotal() {
+        double total = 0;
+        for (ItemPedido item : itens) {
+            total += item.calcularSubtotal();
+        }
+        return total;
+    }
+
+    /** Solicita o pagamento; so avanca se a forma de pagamento aprovar. */
+    public boolean confirmarPagamento() {
+        if (status != StatusPedido.PENDENTE || !formaPagamento.pagar(calcularTotal())) {
+            return false;
+        }
+        status = StatusPedido.PROCESSANDO;
+        return true;
+    }
+
+    /** Conclui apenas um pedido cujo pagamento foi confirmado. */
+    public boolean confirmarPedido() {
+        if (status != StatusPedido.PROCESSANDO) {
+            return false;
+        }
+        status = StatusPedido.CONCLUIDO;
+        return true;
+    }
+
+    /** Cancela somente pedidos ainda pendentes. */
+    public boolean cancelarPedido() {
+        if (status != StatusPedido.PENDENTE) {
+            return false;
+        }
+        status = StatusPedido.CANCELADO;
+        return true;
+    }
+
+    /** Retorna o identificador do pedido. */
+    public Integer getCodigo() {
+        return codigo;
+    }
+
+    /** Define um identificador positivo. */
+    public void setCodigo(Integer codigo) {
+        if (codigo == null || codigo <= 0) {
+            throw new IllegalArgumentException("O codigo deve ser positivo.");
+        }
+        this.codigo = codigo;
+    }
+
+    /** Devolve uma copia para impedir mudancas diretas na lista interna. */
+    public ArrayList<ItemPedido> getItens() {
+        return new ArrayList<>(itens);
+    }
+
+    /** Permite alterar os itens somente antes de confirmar o pagamento. */
+    public void setItens(ArrayList<ItemPedido> itens) {
+        if (status != StatusPedido.PENDENTE) {
+            throw new IllegalStateException("Os itens de um pedido processado nao podem mudar.");
+        }
+        validarItens(itens);
+        this.itens = new ArrayList<>(itens);
+    }
+
+    /** Retorna a forma de pagamento recebida pelo pedido. */
+    public FormaPagamento getFormaPagamento() {
+        return formaPagamento;
+    }
+
+    /** Permite mudar a forma de pagamento somente enquanto o pedido esta pendente. */
+    public void setFormaPagamento(FormaPagamento formaPagamento) {
+        if (formaPagamento == null) {
+            throw new IllegalArgumentException("A forma de pagamento e obrigatoria.");
+        }
+        if (status != null && status != StatusPedido.PENDENTE) {
+            throw new IllegalStateException("O pagamento de um pedido processado nao pode mudar.");
+        }
+        this.formaPagamento = formaPagamento;
+    }
+
+    /** Retorna a etapa atual do pedido. */
+    public StatusPedido getStatus() {
+        return status;
+    }
+
+    /** Impede que o pedido seja criado ou alterado com uma lista vazia. */
+    private void validarItens(ArrayList<ItemPedido> itens) {
+        if (itens == null || itens.isEmpty() || itens.contains(null)) {
+            throw new IllegalArgumentException("O pedido precisa de pelo menos um item valido.");
+        }
+    }
+}
+
+
+===== Entidades\Produto.java =====
+package Entidades;
+
+/** Dados e comportamentos comuns a comidas e bebidas. */
+public abstract class Produto {
+    private String nome;
+    private Double preco;
+    private Integer QuantidadeEstoque;
+    private Integer codigo;
+
+    /** Inicializa os atributos compartilhados pelas subclasses. */
+    public Produto(String nome, Double preco, Integer quantidadeEstoque, Integer codigo) {
+        this.nome = nome;
+        this.preco = preco;
+        QuantidadeEstoque = quantidadeEstoque;
+        this.codigo = codigo;
+    }
+
+    /** Retorna o nome exibido no cardapio. */
+    public String getNome() {
+        return nome;
+    }
+
+    /** Altera o nome do produto. */
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    /** Retorna o preco atual do produto. */
+    public Double getPreco() {
+        return preco;
+    }
+
+    /** Altera o preco atual do produto. */
+    public void setPreco(Double preco) {
+        this.preco = preco;
+    }
+
+    /** Retorna a quantidade disponivel em estoque. */
+    public Integer getQuantidadeEstoque() {
+        return QuantidadeEstoque;
+    }
+
+    /** Define a quantidade em estoque. */
+    public void setQuantidadeEstoque(Integer quantidadeEstoque) {
+        QuantidadeEstoque = quantidadeEstoque;
+    }
+
+    /** Retorna o identificador do produto. */
+    public Integer getCodigo() {
+        return codigo;
+    }
+
+    /** Altera o identificador do produto. */
+    public void setCodigo(Integer codigo) {
+        this.codigo = codigo;
+    }
+
+    /** Acrescenta somente quantidades positivas ao estoque. */
+    public void adicionarEstoque(int quantidade){
+        if(quantidade > 0){
+            QuantidadeEstoque += quantidade;
+        }
+    }
+
+    /** Retira unidades quando existe estoque suficiente. */
+    public boolean removerEstoque(int quantidade){
+        if(quantidade > 0 && quantidade <= QuantidadeEstoque){
+            QuantidadeEstoque -= quantidade;
+            return true;
+        }
+        return false;
+    }
+
+    /** Descreve os dados comuns; as subclasses acrescentam seus dados especificos. */
+    @Override
+    public String toString() {
+        return  "Nome: " + nome + '\n' +
+                "Preco: " + preco + '\n' +
+                "Estoque: " + QuantidadeEstoque + '\n' +
+                "Codigo: " + codigo;
+    }
+}
+
+
+===== Enums\StatusPedido.java =====
+package Enums;
+
+/** Etapas permitidas para o ciclo de vida de um pedido. */
+public enum StatusPedido {
+    PENDENTE,
+    PROCESSANDO,
+    CONCLUIDO,
+    CANCELADO
+}
+
+
+===== Gerenciamento\Cardapio.java =====
+package Gerenciamento;
+
+import Entidades.Produto;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/** Guarda e gerencia os produtos disponiveis no Coffee Break. */
+public class Cardapio {
+    private final List<Produto> produtos;
+
+    /** Recebe a estrutura de dados de fora para facilitar a injecao de dependencia. */
+    public Cardapio(List<Produto> produtos) {
+        if (produtos == null) {
+            throw new IllegalArgumentException("A lista de produtos nao pode ser nula.");
+        }
+        this.produtos = produtos;
+    }
+
+    /** Inclui um produto valido, desde que seu codigo ainda nao exista. */
+    public boolean adicionarProduto(Produto produto) {
+        if (!produtoValido(produto) || buscarPorCodigo(produto.getCodigo()) != null) {
+            return false;
+        }
+        return produtos.add(produto);
+    }
+
+    /** Encontra um produto pelo codigo ou retorna null. */
+    public Produto buscarPorCodigo(int codigo) {
+        for (Produto produto : produtos) {
+            if (produto.getCodigo() != null && produto.getCodigo() == codigo) {
+                return produto;
+            }
+        }
+        return null;
+    }
+
+    /** Substitui um produto, mantendo seu codigo e seu tipo original. */
+    public boolean alterarProduto(int codigo, Produto substituto) {
+        if (!produtoValido(substituto) || substituto.getCodigo() != codigo) {
+            return false;
+        }
+        for (int indice = 0; indice < produtos.size(); indice++) {
+            Produto atual = produtos.get(indice);
+            if (atual.getCodigo() == codigo && atual.getClass() == substituto.getClass()) {
+                produtos.set(indice, substituto);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Exclui um produto pelo codigo, se ele existir. */
+    public boolean excluirProduto(int codigo) {
+        Produto produto = buscarPorCodigo(codigo);
+        return produto != null && produtos.remove(produto);
+    }
+
+    /** Retorna uma copia para impedir alteracoes externas na lista interna. */
+    public List<Produto> listarProdutos() {
+        return new ArrayList<>(produtos);
+    }
+
+    /** Devolve uma lista ordenada por nome, sem mudar a ordem armazenada. */
+    public List<Produto> listarPorNome() {
+        List<Produto> ordenados = listarProdutos();
+        ordenados.sort(Comparator.comparing(Produto::getNome, String.CASE_INSENSITIVE_ORDER));
+        return ordenados;
+    }
+
+    /** Devolve uma lista ordenada por preco, sem mudar a ordem armazenada. */
+    public List<Produto> listarPorPreco() {
+        List<Produto> ordenados = listarProdutos();
+        ordenados.sort(Comparator.comparing(Produto::getPreco));
+        return ordenados;
+    }
+
+    /** Confere os campos comuns antes de cadastrar ou alterar. */
+    private boolean produtoValido(Produto produto) {
+        return produto != null
+                && produto.getCodigo() != null && produto.getCodigo() > 0
+                && produto.getNome() != null && !produto.getNome().trim().isEmpty()
+                && produto.getPreco() != null && Double.isFinite(produto.getPreco()) && produto.getPreco() > 0
+                && produto.getQuantidadeEstoque() != null && produto.getQuantidadeEstoque() >= 0;
+    }
+}
+
+
+===== Gerenciamento\GerenciadorPedidos.java =====
+package Gerenciamento;
+
+import Entidades.ItemPedido;
+import Entidades.Pedido;
+import Enums.StatusPedido;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/** Guarda os pedidos e centraliza suas operacoes de cadastro e consulta. */
+public class GerenciadorPedidos {
+    private final List<Pedido> pedidos;
+
+    /** Recebe a estrutura de dados usada para guardar pedidos. */
+    public GerenciadorPedidos(List<Pedido> pedidos) {
+        if (pedidos == null) {
+            throw new IllegalArgumentException("A lista de pedidos nao pode ser nula.");
+        }
+        this.pedidos = pedidos;
+    }
+
+    /** Cadastra somente pedidos com codigo ainda nao utilizado. */
+    public boolean adicionarPedido(Pedido pedido) {
+        return pedido != null && buscarPorCodigo(pedido.getCodigo()) == null
+                && pedidos.add(pedido);
+    }
+
+    /** Busca um pedido pelo codigo. */
+    public Pedido buscarPorCodigo(int codigo) {
+        for (Pedido pedido : pedidos) {
+            if (pedido.getCodigo() == codigo) return pedido;
+        }
+        return null;
+    }
+
+    /** Altera os itens de um pedido que ainda esta pendente. */
+    public boolean alterarItens(int codigo, ArrayList<ItemPedido> novosItens) {
+        Pedido pedido = buscarPorCodigo(codigo);
+        if (pedido == null || pedido.getStatus() != StatusPedido.PENDENTE
+                || novosItens == null || novosItens.isEmpty() || novosItens.contains(null)) {
+            return false;
+        }
+        pedido.setItens(novosItens);
+        return true;
+    }
+
+    /** Exclui um registro pelo codigo. */
+    public boolean excluirPedido(int codigo) {
+        Pedido pedido = buscarPorCodigo(codigo);
+        return pedido != null && pedidos.remove(pedido);
+    }
+
+    /** Devolve copia da lista para impedir inclusoes externas. */
+    public List<Pedido> listarPedidos() {
+        return new ArrayList<>(pedidos);
+    }
+
+    /** Retorna uma copia ordenada por codigo. */
+    public List<Pedido> listarPorCodigo() {
+        List<Pedido> ordenados = listarPedidos();
+        ordenados.sort(Comparator.comparing(Pedido::getCodigo));
+        return ordenados;
+    }
+
+    /** Retorna uma copia ordenada por valor total. */
+    public List<Pedido> listarPorTotal() {
+        List<Pedido> ordenados = listarPedidos();
+        ordenados.sort(Comparator.comparingDouble(Pedido::calcularTotal));
+        return ordenados;
+    }
+}
+
+
+===== Interfaces\FormaPagamento.java =====
+package Interfaces;
+
+/** Contrato das formas de pagamento registradas pelo atendente. */
+public interface FormaPagamento {
+    /** Valida o valor informado para registrar o pagamento. */
+    boolean pagar(double valor);
+
+    /** Nome apresentado no menu e nos detalhes do pedido. */
+    String getNome();
+}
+
+
+===== Pagamentos\PagamentoCartao.java =====
+package Pagamentos;
+
+import Interfaces.FormaPagamento;
+
+/** Registro manual de um pagamento com cartao de credito ou debito. */
+public class PagamentoCartao implements FormaPagamento {
+    public enum Tipo {
+        CREDITO,
+        DEBITO
+    }
+
+    private final Tipo tipo;
+
+    /** Define a modalidade escolhida antes de associar o pagamento ao pedido. */
+    public PagamentoCartao(Tipo tipo) {
+        if (tipo == null) {
+            throw new IllegalArgumentException("Escolha credito ou debito.");
+        }
+        this.tipo = tipo;
+    }
+
+    /** Valida o valor que o atendente esta registrando. */
+    @Override
+    public boolean pagar(double valor) {
+        return Double.isFinite(valor) && valor > 0;
+    }
+
+    /** Informa no pedido se o cartao e de credito ou debito. */
+    @Override
+    public String getNome() {
+        return tipo == Tipo.CREDITO ? "Cartao de credito" : "Cartao de debito";
+    }
+}
+
+
+===== Pagamentos\PagamentoDinheiro.java =====
+package Pagamentos;
+
+import Interfaces.FormaPagamento;
+
+/** Registro manual de um pagamento em dinheiro. */
+public class PagamentoDinheiro implements FormaPagamento {
+    @Override
+    public boolean pagar(double valor) {
+        return Double.isFinite(valor) && valor > 0;
+    }
+
+    @Override
+    public String getNome() {
+        return "Dinheiro";
+    }
+}
+
+
+===== Pagamentos\PagamentoPix.java =====
+package Pagamentos;
+
+import Interfaces.FormaPagamento;
+
+/** Registro manual de um pagamento em Pix, sem conexao bancaria. */
+public class PagamentoPix implements FormaPagamento {
+    @Override
+    public boolean pagar(double valor) {
+        return Double.isFinite(valor) && valor > 0;
+    }
+
+    @Override
+    public String getNome() {
+        return "Pix";
+    }
+}
+
+
+===== Progama\Progama.java =====
+package Progama;
+
+/** Mantem o nome antigo funcionando enquanto o projeto passa a usar Programa.java. */
+public class Progama {
+    /** Encaminha a execucao do nome antigo para a classe principal Programa. */
+    public static void main(String[] args) {
+        Programa.main(args);
+    }
+}
+
+
+===== Progama\Programa.java =====
+package Progama;
+
+import Entidades.Bebida;
+import Entidades.Comida;
+import Entidades.ItemPedido;
+import Entidades.Pedido;
+import Entidades.Produto;
+import Gerenciamento.Cardapio;
+import Gerenciamento.GerenciadorPedidos;
+import Interfaces.FormaPagamento;
+import Pagamentos.PagamentoCartao;
+import Pagamentos.PagamentoDinheiro;
+import Pagamentos.PagamentoPix;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+/**
+ * Ponto de entrada e interface textual do Coffee Break.
+ * Scanner, Cardapio, GerenciadorPedidos e FormaPagamento chegam pelo construtor.
+ * Programa conversa com o usuario; os gerenciadores guardam os registros.
+ */
+public class Programa {
+    private final Scanner entrada;
+    private final Cardapio cardapio;
+    private final GerenciadorPedidos gerenciadorPedidos;
+    private final List<FormaPagamento> formasPagamento;
+
+    public Programa(Scanner entrada, Cardapio cardapio,
+            GerenciadorPedidos gerenciadorPedidos,
+            List<FormaPagamento> formasPagamento) {
+        this.entrada = entrada;
+        this.cardapio = cardapio;
+        this.gerenciadorPedidos = gerenciadorPedidos;
+        if (formasPagamento == null || formasPagamento.size() != 4
+                || formasPagamento.contains(null)) {
+            throw new IllegalArgumentException("Informe Pix, dinheiro, credito e debito.");
+        }
+        this.formasPagamento = new ArrayList<>(formasPagamento);
+    }
+
+    /** Cria as dependencias e inicia o menu principal. */
+    public static void main(String[] args) {
+        Scanner entrada = new Scanner(System.in);
+        Cardapio cardapio = new Cardapio(new ArrayList<>());
+        GerenciadorPedidos gerenciador = new GerenciadorPedidos(new ArrayList<>());
+        List<FormaPagamento> pagamentos = new ArrayList<>();
+        pagamentos.add(new PagamentoPix());
+        pagamentos.add(new PagamentoDinheiro());
+        pagamentos.add(new PagamentoCartao(PagamentoCartao.Tipo.CREDITO));
+        pagamentos.add(new PagamentoCartao(PagamentoCartao.Tipo.DEBITO));
+        Programa programa = new Programa(entrada, cardapio, gerenciador, pagamentos);
+        programa.cadastrarDadosIniciais();
+        programa.cadastrarPedidosIniciais();
+        programa.executar();
+        entrada.close();
+    }
+
+    /** Carrega sete comidas e sete bebidas para demonstrar as operacoes. */
+    private void cadastrarDadosIniciais() {
+        if (!cardapio.listarProdutos().isEmpty()) return;
+        cardapio.adicionarProduto(new Comida("Coxinha", 6.00, 20, 1, 120.0));
+        cardapio.adicionarProduto(new Comida("Pao de queijo", 4.50, 25, 2, 70.0));
+        cardapio.adicionarProduto(new Comida("Sanduiche", 12.00, 15, 3, 180.0));
+        cardapio.adicionarProduto(new Comida("Brigadeiro", 3.50, 30, 4, 35.0));
+        cardapio.adicionarProduto(new Comida("Bolo", 7.00, 12, 5, 100.0));
+        cardapio.adicionarProduto(new Comida("Empada", 6.50, 18, 6, 110.0));
+        cardapio.adicionarProduto(new Comida("Cookie", 5.00, 22, 7, 60.0));
+        cardapio.adicionarProduto(new Bebida("Cafe expresso", 5.50, 30, 8, 50));
+        cardapio.adicionarProduto(new Bebida("Cafe com leite", 7.00, 25, 9, 200));
+        cardapio.adicionarProduto(new Bebida("Cha", 5.00, 20, 10, 200));
+        cardapio.adicionarProduto(new Bebida("Suco de laranja", 8.00, 18, 11, 300));
+        cardapio.adicionarProduto(new Bebida("Agua", 3.00, 40, 12, 500));
+        cardapio.adicionarProduto(new Bebida("Refrigerante", 6.00, 24, 13, 350));
+        cardapio.adicionarProduto(new Bebida("Chocolate quente", 9.00, 15, 14, 250));
+    }
+
+    /** Cria sete pedidos pendentes para demonstrar busca, ordenacao e CRUD. */
+    private void cadastrarPedidosIniciais() {
+        if (!gerenciadorPedidos.listarPedidos().isEmpty()) return;
+        for (int codigo = 1; codigo <= 7; codigo++) {
+            ArrayList<ItemPedido> itens = new ArrayList<>();
+            itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo), codigo % 3 + 1));
+            itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo + 7), 1));
+            FormaPagamento pagamento = formasPagamento.get((codigo - 1) % formasPagamento.size());
+            gerenciadorPedidos.adicionarPedido(new Pedido(codigo, itens, pagamento));
+        }
+    }
+
+    /** Mantem o programa aberto ate o usuario escolher sair. */
+    private void executar() {
+        int opcao;
+        do {
+            System.out.println("\n========== COFFEE BREAK ==========");
+            System.out.println("1 - Listar produtos");
+            System.out.println("2 - Cadastrar produto");
+            System.out.println("3 - Alterar produto");
+            System.out.println("4 - Excluir produto");
+            System.out.println("5 - Buscar produto por codigo");
+            System.out.println("6 - Ordenar e listar produtos");
+            System.out.println("7 - Gerenciar pedidos");
+            System.out.println("0 - Sair");
+            opcao = lerInteiro("Opcao: ");
+            switch (opcao) {
+                case 1: listarProdutos(); break;
+                case 2: cadastrarProduto(); break;
+                case 3: alterarProduto(); break;
+                case 4: excluirProduto(); break;
+                case 5: buscarProduto(); break;
+                case 6: ordenarProdutos(); break;
+                case 7: menuPedidos(); break;
+                case 0: System.out.println("Ate logo!"); break;
+                default: System.out.println("Opcao invalida.");
+            }
+        } while (opcao != 0);
+    }
+
+    /** Exibe os produtos em uma tabela; recebe Produto para aceitar ambas as subclasses. */
+    private void listarProdutos() {
+        mostrarProdutos(cardapio.listarProdutos());
+    }
+
+    /** Formata qualquer lista de produtos como tabela. */
+    private void mostrarProdutos(List<Produto> produtos) {
+        if (produtos.isEmpty()) {
+            System.out.println("Nenhum produto cadastrado.");
+            return;
+        }
+        System.out.printf("%-6s %-8s %-22s %10s %8s %12s%n", "Codigo", "Tipo", "Nome", "Preco", "Estoque", "Peso/Volume");
+        for (Produto produto : produtos) {
+            String tipo = produto instanceof Comida ? "Comida" : "Bebida";
+            String detalhe = produto instanceof Comida
+                    ? ((Comida) produto).getPesoGramas() + " g"
+                    : ((Bebida) produto).getVolumeML() + " mL";
+            System.out.printf("%-6d %-8s %-22.22s %10.2f %8d %12s%n",
+                    produto.getCodigo(), tipo, produto.getNome(), produto.getPreco(),
+                    produto.getQuantidadeEstoque(), detalhe);
+        }
+    }
+
+    /** Inclui uma comida ou bebida com codigo unico. */
+    private void cadastrarProduto() {
+        int tipo = lerInteiro("1 - Comida | 2 - Bebida: ");
+        if (tipo != 1 && tipo != 2) {
+            System.out.println("Tipo invalido.");
+            return;
+        }
+        int codigo = lerInteiro("Codigo: ");
+        if (codigo <= 0 || cardapio.buscarPorCodigo(codigo) != null) {
+            System.out.println("O codigo deve ser positivo e ainda nao utilizado.");
+            return;
+        }
+        String nome = lerTexto("Nome: ");
+        double preco = lerDoublePositivo("Preco: ");
+        int estoque = lerInteiroNaoNegativo("Quantidade em estoque: ");
+        if (tipo == 1) {
+            double peso = lerDoublePositivo("Peso em gramas: ");
+            cardapio.adicionarProduto(new Comida(nome, preco, estoque, codigo, peso));
+        } else {
+            int volume = lerInteiroPositivo("Volume em mL: ");
+            cardapio.adicionarProduto(new Bebida(nome, preco, estoque, codigo, volume));
+        }
+        System.out.println("Produto cadastrado.");
+    }
+
+    /** Atualiza os dados de um produto preservando seu codigo e seu tipo. */
+    private void alterarProduto() {
+        Produto produto = cardapio.buscarPorCodigo(lerInteiro("Codigo a alterar: "));
+        if (produto == null) {
+            System.out.println("Produto nao encontrado.");
+            return;
+        }
+        String nome = lerTexto("Novo nome: ");
+        double preco = lerDoublePositivo("Novo preco: ");
+        int estoque = lerInteiroNaoNegativo("Novo estoque: ");
+        Produto substituto;
+        if (produto instanceof Comida) {
+            double peso = lerDoublePositivo("Novo peso em gramas: ");
+            substituto = new Comida(nome, preco, estoque, produto.getCodigo(), peso);
+        } else {
+            int volume = lerInteiroPositivo("Novo volume em mL: ");
+            substituto = new Bebida(nome, preco, estoque, produto.getCodigo(), volume);
+        }
+        System.out.println(cardapio.alterarProduto(produto.getCodigo(), substituto)
+                ? "Produto alterado." : "Nao foi possivel alterar o produto.");
+    }
+
+    /** Remove o produto identificado por seu codigo. */
+    private void excluirProduto() {
+        int codigo = lerInteiro("Codigo a excluir: ");
+        System.out.println(cardapio.excluirProduto(codigo)
+                ? "Produto excluido." : "Produto nao encontrado.");
+    }
+
+    /** Busca e mostra um produto pelo codigo. */
+    private void buscarProduto() {
+        Produto produto = cardapio.buscarPorCodigo(lerInteiro("Codigo a buscar: "));
+        System.out.println(produto == null ? "Produto nao encontrado." : produto);
+    }
+
+    /** Ordena a lista por nome ou preco e a exibe. */
+    private void ordenarProdutos() {
+        int criterio = lerInteiro("1 - Nome | 2 - Preco: ");
+        if (criterio == 1) {
+            mostrarProdutos(cardapio.listarPorNome());
+        } else if (criterio == 2) {
+            mostrarProdutos(cardapio.listarPorPreco());
+        } else {
+            System.out.println("Criterio invalido.");
+            return;
+        }
+    }
+
+    /** Apresenta as operacoes de pedidos sem misturar entrada de dados ao gerenciador. */
+    private void menuPedidos() {
+        int opcao;
+        do {
+            System.out.println("\n------------ PEDIDOS ------------");
+            System.out.println("1 - Listar pedidos");
+            System.out.println("2 - Cadastrar pedido");
+            System.out.println("3 - Buscar pedido por codigo");
+            System.out.println("4 - Alterar itens de pedido pendente");
+            System.out.println("5 - Excluir pedido");
+            System.out.println("6 - Ordenar e listar pedidos");
+            System.out.println("7 - Confirmar pagamento");
+            System.out.println("8 - Concluir pedido");
+            System.out.println("9 - Cancelar pedido");
+            System.out.println("0 - Voltar");
+            opcao = lerInteiro("Opcao: ");
+            switch (opcao) {
+                case 1: mostrarPedidos(gerenciadorPedidos.listarPedidos()); break;
+                case 2: cadastrarPedido(); break;
+                case 3: buscarPedido(); break;
+                case 4: alterarPedido(); break;
+                case 5: excluirPedido(); break;
+                case 6: ordenarPedidos(); break;
+                case 7: confirmarPagamento(); break;
+                case 8: concluirPedido(); break;
+                case 9: cancelarPedido(); break;
+                case 0: break;
+                default: System.out.println("Opcao invalida.");
+            }
+        } while (opcao != 0);
+    }
+
+    /** Monta um pedido a partir de produtos encontrados no Cardapio. */
+    private void cadastrarPedido() {
+        int codigo = lerInteiroPositivo("Codigo do novo pedido: ");
+        if (gerenciadorPedidos.buscarPorCodigo(codigo) != null) {
+            System.out.println("Esse codigo ja esta em uso.");
+            return;
+        }
+        ArrayList<ItemPedido> itens = lerItensPedido();
+        if (itens.isEmpty()) {
+            System.out.println("Pedido nao criado: inclua pelo menos um item.");
+            return;
+        }
+        FormaPagamento pagamento = escolherFormaPagamento();
+        Pedido pedido = new Pedido(codigo, itens, pagamento);
+        System.out.println(gerenciadorPedidos.adicionarPedido(pedido)
+                ? "Pedido cadastrado. Total: R$ " + String.format("%.2f", pedido.calcularTotal())
+                : "Nao foi possivel cadastrar o pedido.");
+    }
+
+    /** Le produtos e quantidades; codigo zero encerra a selecao. */
+    private ArrayList<ItemPedido> lerItensPedido() {
+        ArrayList<ItemPedido> itens = new ArrayList<>();
+        mostrarProdutos(cardapio.listarProdutos());
+        while (true) {
+            int codigoProduto = lerInteiro("Codigo do produto (0 para terminar): ");
+            if (codigoProduto == 0) return itens;
+            Produto produto = cardapio.buscarPorCodigo(codigoProduto);
+            if (produto == null) {
+                System.out.println("Produto nao encontrado.");
+                continue;
+            }
+            int quantidade = lerInteiroPositivo("Quantidade: ");
+            itens.add(new ItemPedido(produto, quantidade));
+            System.out.println("Item incluido.");
+        }
+    }
+
+    /** Escolhe uma implementacao da interface e a modalidade do cartao. */
+    private FormaPagamento escolherFormaPagamento() {
+        while (true) {
+            int opcao = lerInteiro("Forma de pagamento: 1 - Pix | 2 - Dinheiro | 3 - Cartao: ");
+            if (opcao == 1 || opcao == 2) return formasPagamento.get(opcao - 1);
+            if (opcao == 3) {
+                while (true) {
+                    int tipo = lerInteiro("Cartao: 1 - Credito | 2 - Debito: ");
+                    if (tipo == 1) return formasPagamento.get(2);
+                    if (tipo == 2) return formasPagamento.get(3);
+                    System.out.println("Escolha 1 ou 2.");
+                }
+            }
+            System.out.println("Escolha 1, 2 ou 3.");
+        }
+    }
+
+    /** Mostra todos os pedidos em formato tabular. */
+    private void mostrarPedidos(List<Pedido> pedidos) {
+        if (pedidos.isEmpty()) {
+            System.out.println("Nenhum pedido cadastrado.");
+            return;
+        }
+        System.out.printf("%-8s %-8s %12s %-14s %-10s%n", "Codigo", "Itens", "Total", "Status", "Pagamento");
+        for (Pedido pedido : pedidos) {
+            System.out.printf("%-8d %-8d %12.2f %-14s %-10s%n", pedido.getCodigo(),
+                    pedido.getItens().size(), pedido.calcularTotal(), pedido.getStatus(),
+                    pedido.getFormaPagamento().getNome());
+        }
+    }
+
+    /** Exibe cada item e o total de um pedido buscado por codigo. */
+    private void buscarPedido() {
+        Pedido pedido = gerenciadorPedidos.buscarPorCodigo(lerInteiro("Codigo a buscar: "));
+        if (pedido == null) {
+            System.out.println("Pedido nao encontrado.");
+            return;
+        }
+        System.out.println("Pedido " + pedido.getCodigo() + " - " + pedido.getStatus()
+                + " - " + pedido.getFormaPagamento().getNome());
+        System.out.printf("%-22s %8s %12s %12s%n", "Produto", "Qtd.", "Preco", "Subtotal");
+        for (ItemPedido item : pedido.getItens()) {
+            System.out.printf("%-22.22s %8d %12.2f %12.2f%n", item.getProduto().getNome(),
+                    item.getQuantidade(), item.getPrecoUnitario(), item.calcularSubtotal());
+        }
+        System.out.printf("Total: R$ %.2f%n", pedido.calcularTotal());
+    }
+
+    /** Substitui os itens somente enquanto o pedido estiver pendente. */
+    private void alterarPedido() {
+        int codigo = lerInteiro("Codigo a alterar: ");
+        Pedido pedido = gerenciadorPedidos.buscarPorCodigo(codigo);
+        if (pedido == null || pedido.getStatus() != Enums.StatusPedido.PENDENTE) {
+            System.out.println("Pedido inexistente ou ja processado.");
+            return;
+        }
+        ArrayList<ItemPedido> itens = lerItensPedido();
+        if (itens.isEmpty()) {
+            System.out.println("Alteracao cancelada: o pedido precisa de itens.");
+            return;
+        }
+        if (gerenciadorPedidos.alterarItens(codigo, itens)) {
+            pedido.setFormaPagamento(escolherFormaPagamento());
+            System.out.println("Pedido alterado.");
+        } else {
+            System.out.println("Nao foi possivel alterar o pedido.");
+        }
+    }
+
+    /** Exclui o registro informado pelo usuario. */
+    private void excluirPedido() {
+        int codigo = lerInteiro("Codigo a excluir: ");
+        System.out.println(gerenciadorPedidos.excluirPedido(codigo)
+                ? "Pedido excluido." : "Pedido nao encontrado.");
+    }
+
+    /** Lista pedidos ordenados por codigo ou valor total. */
+    private void ordenarPedidos() {
+        int criterio = lerInteiro("1 - Codigo | 2 - Total: ");
+        if (criterio == 1) mostrarPedidos(gerenciadorPedidos.listarPorCodigo());
+        else if (criterio == 2) mostrarPedidos(gerenciadorPedidos.listarPorTotal());
+        else System.out.println("Criterio invalido.");
+    }
+
+    /** Registra o pagamento atraves da interface FormaPagamento. */
+    private void confirmarPagamento() {
+        Pedido pedido = gerenciadorPedidos.buscarPorCodigo(lerInteiro("Codigo do pedido: "));
+        System.out.println(pedido != null && pedido.confirmarPagamento()
+                ? "Pagamento registrado; pedido em processamento."
+                : "Pedido inexistente, ja processado ou pagamento recusado.");
+    }
+
+    /** Conclui somente pedidos que ja tiveram pagamento registrado. */
+    private void concluirPedido() {
+        Pedido pedido = gerenciadorPedidos.buscarPorCodigo(lerInteiro("Codigo do pedido: "));
+        System.out.println(pedido != null && pedido.confirmarPedido()
+                ? "Pedido concluido." : "O pedido precisa estar em processamento.");
+    }
+
+    /** Cancela somente pedidos pendentes. */
+    private void cancelarPedido() {
+        Pedido pedido = gerenciadorPedidos.buscarPorCodigo(lerInteiro("Codigo do pedido: "));
+        System.out.println(pedido != null && pedido.cancelarPedido()
+                ? "Pedido cancelado." : "Somente pedidos pendentes podem ser cancelados.");
+    }
+
+    /** Exige texto nao vazio. */
+    private String lerTexto(String mensagem) {
+        String texto;
+        do {
+            System.out.print(mensagem);
+            texto = entrada.nextLine().trim();
+        } while (texto.isEmpty());
+        return texto;
+    }
+
+    /** Repete a leitura ate receber um inteiro valido. */
+    private int lerInteiro(String mensagem) {
+        while (true) {
+            try {
+                System.out.print(mensagem);
+                return Integer.parseInt(entrada.nextLine().trim());
+            } catch (NumberFormatException erro) {
+                System.out.println("Digite um numero inteiro valido.");
+            }
+        }
+    }
+
+    /** Le zero ou um inteiro positivo. */
+    private int lerInteiroNaoNegativo(String mensagem) {
+        int valor;
+        do { valor = lerInteiro(mensagem); } while (valor < 0);
+        return valor;
+    }
+
+    /** Le um inteiro estritamente positivo. */
+    private int lerInteiroPositivo(String mensagem) {
+        int valor;
+        do { valor = lerInteiro(mensagem); } while (valor <= 0);
+        return valor;
+    }
+
+    /** Aceita ponto ou virgula decimal e rejeita valores nao positivos. */
+    private double lerDoublePositivo(String mensagem) {
+        while (true) {
+            try {
+                System.out.print(mensagem);
+                double valor = Double.parseDouble(entrada.nextLine().trim().replace(',', '.'));
+                if (Double.isFinite(valor) && valor > 0) return valor;
+            } catch (NumberFormatException erro) {
+                // A mensagem abaixo tambem cobre entrada nao numerica.
+            }
+            System.out.println("Digite um valor positivo valido.");
+        }
+    }
+}
+
+
