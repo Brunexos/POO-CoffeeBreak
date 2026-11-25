@@ -29,6 +29,20 @@ public class Pedido {
         return total;
     }
 
+    /** Exibe os itens e o total deste pedido quando ele e consultado. */
+    public void exibirDetalhes() {
+        System.out.println("Pedido " + codigo + " - " + status
+                + " - " + formaPagamento.getNome());
+        System.out.printf("%-22s %8s %12s %12s%n",
+                "Produto", "Qtd.", "Preco", "Subtotal");
+        for (ItemPedido item : itens) {
+            System.out.printf("%-22.22s %8d %12.2f %12.2f%n",
+                    item.getProduto().getNome(), item.getQuantidade(),
+                    item.getPrecoUnitario(), item.calcularSubtotal());
+        }
+        System.out.printf("Total: R$ %.2f%n", calcularTotal());
+    }
+
     /** Solicita o pagamento; so avanca se a forma de pagamento aprovar. */
     public boolean confirmarPagamento() {
         if (status != StatusPedido.PENDENTE || !formaPagamento.pagar(calcularTotal())) {

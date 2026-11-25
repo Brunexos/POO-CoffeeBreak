@@ -20,9 +20,17 @@ Os registros ficam em memoria durante a execucao. Ao reiniciar, os dados iniciai
 | Polimorfismo | `toString()` e sobrescrito nas subclasses; Pix, dinheiro e cartao implementam `FormaPagamento`. |
 | Interface | `FormaPagamento` define `pagar` e `getNome`. |
 | Composicao | `Pedido` guarda uma lista propria de `ItemPedido`. |
-| Injecao de dependencia | `Programa` recebe gerenciadores e formas de pagamento pelo construtor; `Pedido` recebe uma `FormaPagamento`. |
-| Inversao de controle | O metodo `main` monta os objetos e os entrega aos consumidores. |
+| Injecao de dependencia | `Programa.main` entrega listas aos construtores de `Cardapio` e `GerenciadorPedidos`; cada `Pedido` recebe uma `FormaPagamento` pelo construtor. |
+| Inversao de controle | O metodo `main` escolhe as dependencias concretas; `Pedido` usa a interface `FormaPagamento` sem criar Pix, dinheiro ou cartao por conta propria. |
 | Estrutura de dados | `Cardapio` e `GerenciadorPedidos` usam listas de objetos. |
+
+## Organizacao das classes
+
+- `Progama/Programa.java`: unico arquivo da pasta; seu unico metodo e `main`, com dados iniciais, Scanner e menus textuais.
+- `Cardapio.java`: guarda, consulta, ordena e exibe produtos.
+- `GerenciadorPedidos.java`: guarda, consulta, ordena e exibe a tabela de pedidos.
+- `Pedido.java`: guarda itens, calcula total, controla status e exibe os detalhes de um pedido.
+- `FormaPagamento.java` e suas implementacoes: fornecem as opcoes Pix, dinheiro, cartao de credito e cartao de debito.
 
 ## Como executar no PowerShell
 

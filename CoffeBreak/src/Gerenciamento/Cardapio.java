@@ -1,5 +1,7 @@
 package Gerenciamento;
 
+import Entidades.Bebida;
+import Entidades.Comida;
 import Entidades.Produto;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -73,6 +75,25 @@ public class Cardapio {
         List<Produto> ordenados = listarProdutos();
         ordenados.sort(Comparator.comparing(Produto::getPreco));
         return ordenados;
+    }
+
+    /** Exibe os produtos recebidos em uma tabela, inclusive listas ordenadas. */
+    public void exibirProdutos(List<Produto> produtosParaExibir) {
+        if (produtosParaExibir == null || produtosParaExibir.isEmpty()) {
+            System.out.println("Nenhum produto cadastrado.");
+            return;
+        }
+        System.out.printf("%-6s %-8s %-22s %10s %8s %12s%n",
+                "Codigo", "Tipo", "Nome", "Preco", "Estoque", "Peso/Volume");
+        for (Produto produto : produtosParaExibir) {
+            String tipo = produto instanceof Comida ? "Comida" : "Bebida";
+            String detalhe = produto instanceof Comida
+                    ? ((Comida) produto).getPesoGramas() + " g"
+                    : ((Bebida) produto).getVolumeML() + " mL";
+            System.out.printf("%-6d %-8s %-22.22s %10.2f %8d %12s%n",
+                    produto.getCodigo(), tipo, produto.getNome(), produto.getPreco(),
+                    produto.getQuantidadeEstoque(), detalhe);
+        }
     }
 
     /** Confere os campos comuns antes de cadastrar ou alterar. */

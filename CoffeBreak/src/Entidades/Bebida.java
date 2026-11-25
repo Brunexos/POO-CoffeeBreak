@@ -7,7 +7,7 @@ public class Bebida extends Produto {
     /** Cria uma bebida usando os atributos herdados de Produto. */
     public Bebida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Integer volumeML) {
         super(nome, preco, quantidadeEstoque, codigo);
-        this.volumeML = volumeML;
+        setVolumeML(volumeML);
     }
 
     /** Retorna o volume da bebida. */
@@ -17,6 +17,9 @@ public class Bebida extends Produto {
 
     /** Altera o volume da bebida. */
     public void setVolumeML(Integer volumeML) {
+        if (volumeML == null || volumeML <= 0) {
+            throw new IllegalArgumentException("O volume deve ser positivo.");
+        }
         this.volumeML = volumeML;
     }
 

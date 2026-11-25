@@ -7,7 +7,7 @@ public class Comida extends Produto{
     /** Cria uma comida usando os atributos herdados de Produto. */
     public Comida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Double pesoGramas) {
         super(nome, preco, quantidadeEstoque, codigo);
-        this.pesoGramas = pesoGramas;
+        setPesoGramas(pesoGramas);
     }
 
     /** Retorna o peso da porcao. */
@@ -17,6 +17,9 @@ public class Comida extends Produto{
 
     /** Altera o peso da porcao. */
     public void setPesoGramas(Double pesoGramas) {
+        if (pesoGramas == null || !Double.isFinite(pesoGramas) || pesoGramas <= 0) {
+            throw new IllegalArgumentException("O peso deve ser positivo.");
+        }
         this.pesoGramas = pesoGramas;
     }
 

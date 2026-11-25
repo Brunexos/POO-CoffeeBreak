@@ -68,4 +68,19 @@ public class GerenciadorPedidos {
         ordenados.sort(Comparator.comparingDouble(Pedido::calcularTotal));
         return ordenados;
     }
+
+    /** Exibe os pedidos recebidos em tabela, inclusive listas ordenadas. */
+    public void exibirPedidos(List<Pedido> pedidosParaExibir) {
+        if (pedidosParaExibir == null || pedidosParaExibir.isEmpty()) {
+            System.out.println("Nenhum pedido cadastrado.");
+            return;
+        }
+        System.out.printf("%-8s %-8s %12s %-14s %-18s%n",
+                "Codigo", "Itens", "Total", "Status", "Pagamento");
+        for (Pedido pedido : pedidosParaExibir) {
+            System.out.printf("%-8d %-8d %12.2f %-14s %-18s%n",
+                    pedido.getCodigo(), pedido.getItens().size(), pedido.calcularTotal(),
+                    pedido.getStatus(), pedido.getFormaPagamento().getNome());
+        }
+    }
 }
