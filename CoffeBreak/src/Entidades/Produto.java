@@ -4,14 +4,14 @@ package Entidades;
 public abstract class Produto {
     private String nome;
     private Double preco;
-    private Integer QuantidadeEstoque;
+    private Integer quantidadeEstoque;
     private Integer codigo;
 
     /** Inicializa os atributos compartilhados pelas subclasses. */
     public Produto(String nome, Double preco, Integer quantidadeEstoque, Integer codigo) {
         this.nome = nome;
         this.preco = preco;
-        QuantidadeEstoque = quantidadeEstoque;
+        this.quantidadeEstoque = quantidadeEstoque;
         this.codigo = codigo;
     }
 
@@ -37,12 +37,12 @@ public abstract class Produto {
 
     /** Retorna a quantidade disponivel em estoque. */
     public Integer getQuantidadeEstoque() {
-        return QuantidadeEstoque;
+        return quantidadeEstoque;
     }
 
     /** Define a quantidade em estoque. */
     public void setQuantidadeEstoque(Integer quantidadeEstoque) {
-        QuantidadeEstoque = quantidadeEstoque;
+        this.quantidadeEstoque = quantidadeEstoque;
     }
 
     /** Retorna o identificador do produto. */
@@ -58,14 +58,14 @@ public abstract class Produto {
     /** Acrescenta somente quantidades positivas ao estoque. */
     public void adicionarEstoque(int quantidade){
         if(quantidade > 0){
-            QuantidadeEstoque += quantidade;
+            quantidadeEstoque += quantidade;
         }
     }
 
     /** Retira unidades quando existe estoque suficiente. */
     public boolean removerEstoque(int quantidade){
-        if(quantidade > 0 && quantidade <= QuantidadeEstoque){
-            QuantidadeEstoque -= quantidade;
+        if(quantidade > 0 && quantidade <= quantidadeEstoque){
+            quantidadeEstoque -= quantidade;
             return true;
         }
         return false;
@@ -76,7 +76,7 @@ public abstract class Produto {
     public String toString() {
         return  "Nome: " + nome + '\n' +
                 "Preco: " + preco + '\n' +
-                "Estoque: " + QuantidadeEstoque + '\n' +
+                "Estoque: " + quantidadeEstoque + '\n' +
                 "Codigo: " + codigo;
     }
 }

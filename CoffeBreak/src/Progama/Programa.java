@@ -230,6 +230,15 @@ public class Programa {
                                                     System.out.println("A quantidade deve ser positiva.");
                                                     continue;
                                                 }
+                                                // Considera tambem as unidades ja incluidas no mesmo pedido.
+                                                int disponivel = produto.getQuantidadeEstoque();
+                                                for (ItemPedido item : itens) {
+                                                    if (item.getProduto() == produto) disponivel -= item.getQuantidade();
+                                                }
+                                                if (quantidade > disponivel) {
+                                                    System.out.println("Quantidade disponivel para incluir: " + disponivel);
+                                                    continue;
+                                                }
                                                 itens.add(new ItemPedido(produto, quantidade));
                                                 System.out.println("Item incluido.");
                                             }
@@ -261,6 +270,8 @@ public class Programa {
                                                     System.out.println("Nao foi possivel alterar o pedido.");
                                                 }
                                             } else {
+                                                // Inversao de controle: o menu escolhe a implementacao de pagamento.
+                                                // Injecao de dependencia: o construtor recebe a FormaPagamento escolhida.
                                                 Pedido pedido = new Pedido(codigo, itens, pagamento);
                                                 System.out.println(gerenciadorPedidos.adicionarPedido(pedido)
                                                         ? String.format("Pedido cadastrado. Total: R$ %.2f",
