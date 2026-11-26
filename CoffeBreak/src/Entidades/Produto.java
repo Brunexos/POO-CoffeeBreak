@@ -1,11 +1,14 @@
 package Entidades;
 
-/** Dados e comportamentos comuns a comidas e bebidas. */
+/**
+ * Dados e comportamentos comuns a comidas e bebidas.
+ * E abstrata porque nao existe um produto "generico": todo produto e uma Comida ou uma Bebida.
+ */
 public abstract class Produto {
-    private String nome;
-    private Double preco;
-    private Integer quantidadeEstoque;
-    private Integer codigo;
+    private String nome;              // nome exibido no cardapio
+    private Double preco;             // preco atual de venda, em reais
+    private Integer quantidadeEstoque; // unidades disponiveis para venda
+    private Integer codigo;           // identificador unico usado nas buscas
 
     /** Inicializa os atributos compartilhados pelas subclasses. */
     public Produto(String nome, Double preco, Integer quantidadeEstoque, Integer codigo) {
@@ -69,6 +72,22 @@ public abstract class Produto {
             return true;
         }
         return false;
+    }
+
+    /** Retorna o tipo do produto; cada subclasse informa o seu (polimorfismo). */
+    public abstract String getTipo();
+
+    /** Retorna o peso ou o volume ja formatado; cada subclasse sabe qual medida usa. */
+    public abstract String getDetalhe();
+
+    /**
+     * Copia os dados comuns de outro produto para este mesmo objeto.
+     * Alterar o objeto (em vez de troca-lo) mantem os pedidos ligados ao estoque atualizado.
+     */
+    public void atualizarDados(Produto novosDados) {
+        setNome(novosDados.getNome());
+        setPreco(novosDados.getPreco());
+        setQuantidadeEstoque(novosDados.getQuantidadeEstoque());
     }
 
     /** Descreve os dados comuns; as subclasses acrescentam seus dados especificos. */

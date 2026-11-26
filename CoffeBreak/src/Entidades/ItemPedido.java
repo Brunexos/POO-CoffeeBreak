@@ -2,9 +2,9 @@ package Entidades;
 
 /** Um produto e sua quantidade dentro de um pedido. */
 public class ItemPedido {
-    private final Produto produto;
-    private final int quantidade;
-    private final double precoUnitario;
+    private final Produto produto;      // produto do cardapio que foi pedido
+    private final int quantidade;       // unidades pedidas desse produto
+    private final double precoUnitario; // preco copiado no momento do pedido
 
     /** Guarda o preco no momento da inclusao para preservar o valor do pedido. */
     public ItemPedido(Produto produto, int quantidade) {

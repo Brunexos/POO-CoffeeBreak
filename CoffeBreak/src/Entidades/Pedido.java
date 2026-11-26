@@ -4,20 +4,23 @@ import java.util.ArrayList;
 import Enums.StatusPedido;
 import Interfaces.FormaPagamento;
 
-/** Pedido composto por itens e associado a uma forma de pagamento. */
+/**
+ * Pedido composto por itens (composicao: a lista de itens pertence ao pedido)
+ * e associado a uma forma de pagamento recebida de fora (injecao de dependencia).
+ */
 public class Pedido {
-    private Integer codigo;
-    private ArrayList<ItemPedido> itens;
-    private FormaPagamento formaPagamento;
-    private StatusPedido status;
+    private Integer codigo;                // identificador unico do pedido
+    private ArrayList<ItemPedido> itens;   // itens que compoem o pedido
+    private FormaPagamento formaPagamento; // interface: Pix, dinheiro ou cartao
+    private StatusPedido status;           // etapa atual do pedido
 
     /** Recebe os itens e a forma de pagamento; nao cria essas dependencias. */
     public Pedido(Integer codigo, ArrayList<ItemPedido> itens, FormaPagamento formaPagamento) {
         setCodigo(codigo);
         validarItens(itens);
         setFormaPagamento(formaPagamento);
-        this.itens = new ArrayList<>(itens);
-        this.status = StatusPedido.PENDENTE;
+        this.itens = new ArrayList<>(itens); // copia: mudancas na lista original nao afetam o pedido
+        this.status = StatusPedido.PENDENTE; // todo pedido novo comeca pendente
     }
 
     /** Soma os subtotais de todos os itens do pedido. */
@@ -33,6 +36,7 @@ public class Pedido {
     public void exibirDetalhes() {
         System.out.println("Pedido " + codigo + " - " + status
                 + " - " + formaPagamento.getNome());
+        // Cabecalho e linhas com largura fixa formam a tabela de itens.
         System.out.printf("%-22s %8s %12s %12s%n",
                 "Produto", "Qtd.", "Preco", "Subtotal");
         for (ItemPedido item : itens) {
@@ -43,12 +47,37 @@ public class Pedido {
         System.out.printf("Total: R$ %.2f%n", calcularTotal());
     }
 
-    /** Solicita o pagamento; so avanca se a forma de pagamento aprovar. */
+    /**
+     * Solicita o pagamento e da baixa no estoque dos produtos.
+     * So avanca se o pedido estiver pendente, houver estoque e a forma de pagamento aprovar.
+     */
     public boolean confirmarPagamento() {
-        if (status != StatusPedido.PENDENTE || !formaPagamento.pagar(calcularTotal())) {
+        // Polimorfismo: pagar() executa a implementacao da forma de pagamento escolhida.
+        if (status != StatusPedido.PENDENTE || !estoqueSuficiente()
+                || !formaPagamento.pagar(calcularTotal())) {
             return false;
         }
+        // O estoque so e retirado depois de conferir todos os itens, para nao baixar pela metade.
+        for (ItemPedido item : itens) {
+            item.getProduto().removerEstoque(item.getQuantidade());
+        }
         status = StatusPedido.PROCESSANDO;
+        return true;
+    }
+
+    /** Confere se o estoque cobre o total pedido de cada produto, mesmo repetido em varios itens. */
+    private boolean estoqueSuficiente() {
+        for (ItemPedido item : itens) {
+            int unidadesDoProduto = 0;
+            for (ItemPedido outro : itens) {
+                if (outro.getProduto() == item.getProduto()) {
+                    unidadesDoProduto += outro.getQuantidade();
+                }
+            }
+            if (unidadesDoProduto > item.getProduto().getQuantidadeEstoque()) {
+                return false;
+            }
+        }
         return true;
     }
 

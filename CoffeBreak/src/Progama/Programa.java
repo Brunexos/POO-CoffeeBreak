@@ -17,12 +17,29 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
-/** Ponto de entrada: cria as dependencias e conduz os menus pelo terminal. */
+/**
+ * COFFEE BREAK - sistema textual de cadastro e gerenciamento de uma lanchonete.
+ *
+ * O que o programa faz:
+ * - Cardapio: incluir, alterar, excluir, buscar por codigo, listar em tabela e
+ *   listar ordenado por nome ou preco as comidas e bebidas.
+ * - Pedidos: incluir com varios itens, alterar enquanto pendente, excluir, buscar,
+ *   listar em tabela e ordenar por codigo ou total.
+ * - Fluxo do pedido: PENDENTE -> PROCESSANDO (pagamento registrado e estoque baixado)
+ *   -> CONCLUIDO; um pedido pendente tambem pode ser CANCELADO.
+ * - Ao iniciar, cadastra 7 comidas, 7 bebidas e 7 pedidos para testes.
+ * Os registros ficam em listas (ArrayList) na memoria enquanto o programa roda.
+ *
+ * Esta e a classe principal. Ela cria todas as dependencias e as entrega aos objetos
+ * (inversao de controle) e conduz os menus pelo terminal.
+ */
 public class Programa {
+    /** Monta os objetos, cadastra os dados iniciais e repete o menu principal ate o usuario sair. */
     public static void main(String[] args) {
-        // O main fornece listas e formas de pagamento aos objetos que dependem delas.
+        // Inversao de controle: o main cria as dependencias concretas e as injeta nos construtores.
         Cardapio cardapio = new Cardapio(new ArrayList<>());
         GerenciadorPedidos gerenciadorPedidos = new GerenciadorPedidos(new ArrayList<>());
+        // Formas de pagamento disponiveis, todas guardadas pelo tipo da interface.
         List<FormaPagamento> pagamentos = new ArrayList<>();
         pagamentos.add(new PagamentoPix());
         pagamentos.add(new PagamentoDinheiro());
@@ -44,16 +61,19 @@ public class Programa {
         cardapio.adicionarProduto(new Bebida("Agua", 3.00, 40, 12, 500));
         cardapio.adicionarProduto(new Bebida("Refrigerante", 6.00, 24, 13, 350));
         cardapio.adicionarProduto(new Bebida("Chocolate quente", 9.00, 15, 14, 250));
+        // Cria 7 pedidos: cada um tem a comida de codigo N e a bebida de codigo N + 7.
         for (int codigo = 1; codigo <= 7; codigo++) {
             ArrayList<ItemPedido> itens = new ArrayList<>();
             itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo), codigo % 3 + 1));
             itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo + 7), 1));
+            // Alterna as formas de pagamento entre os pedidos iniciais.
             gerenciadorPedidos.adicionarPedido(
                     new Pedido(codigo, itens, pagamentos.get((codigo - 1) % pagamentos.size())));
         }
 
+        // try-with-resources fecha o Scanner automaticamente ao sair.
         try (Scanner scanner = new Scanner(System.in)) {
-            boolean aberto = true;
+            boolean aberto = true; // controla a repeticao do menu principal
             while (aberto) {
                 System.out.println("\n========== COFFEE BREAK ==========");
                 System.out.println("1 - Listar produtos");
@@ -65,15 +85,16 @@ public class Programa {
                 System.out.println("7 - Gerenciar pedidos");
                 System.out.println("0 - Sair");
                 System.out.print("Opcao: ");
-                if (!scanner.hasNextLine()) break;
+                if (!scanner.hasNextLine()) break; // entrada encerrada: sai do programa
                 String opcao = scanner.nextLine().trim();
 
+                // Erros de digitacao (ex.: letra no lugar de numero) sao tratados no catch abaixo.
                 try {
                     switch (opcao) {
-                        case "1":
+                        case "1": // Listar todos os produtos em tabela
                             cardapio.exibirProdutos(cardapio.listarProdutos());
                             break;
-                        case "2": {
+                        case "2": { // Incluir uma comida ou uma bebida
                             System.out.print("1 - Comida | 2 - Bebida: ");
                             int tipo = Integer.parseInt(scanner.nextLine().trim());
                             if (tipo != 1 && tipo != 2) {
@@ -82,6 +103,7 @@ public class Programa {
                             }
                             System.out.print("Codigo: ");
                             int codigo = Integer.parseInt(scanner.nextLine().trim());
+                            // O codigo identifica o produto, entao nao pode repetir.
                             if (codigo <= 0 || cardapio.buscarPorCodigo(codigo) != null) {
                                 System.out.println("O codigo deve ser positivo e ainda nao utilizado.");
                                 break;
@@ -89,10 +111,11 @@ public class Programa {
                             System.out.print("Nome: ");
                             String nome = scanner.nextLine().trim();
                             System.out.print("Preco: ");
+                            // Aceita virgula ou ponto como separador decimal.
                             double preco = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
                             System.out.print("Quantidade em estoque: ");
                             int estoque = Integer.parseInt(scanner.nextLine().trim());
-                            Produto novo;
+                            Produto novo; // tipo da superclasse guarda Comida ou Bebida
                             if (tipo == 1) {
                                 System.out.print("Peso em gramas: ");
                                 double peso = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
@@ -110,11 +133,12 @@ public class Programa {
                                 }
                                 novo = new Bebida(nome, preco, estoque, codigo, volume);
                             }
+                            // O Cardapio valida nome, preco e estoque antes de incluir.
                             System.out.println(cardapio.adicionarProduto(novo)
                                     ? "Produto cadastrado." : "Dados do produto invalidos.");
                             break;
                         }
-                        case "3": {
+                        case "3": { // Alterar os dados de um produto existente
                             System.out.print("Codigo a alterar: ");
                             Produto atual = cardapio.buscarPorCodigo(
                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -128,7 +152,9 @@ public class Programa {
                             double preco = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
                             System.out.print("Novo estoque: ");
                             int estoque = Integer.parseInt(scanner.nextLine().trim());
-                            Produto substituto;
+                            // Objeto temporario com os novos dados; o tipo e o codigo continuam os mesmos.
+                            Produto novosDados;
+                            // O menu precisa saber o tipo para perguntar peso (comida) ou volume (bebida).
                             if (atual instanceof Comida) {
                                 System.out.print("Novo peso em gramas: ");
                                 double peso = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
@@ -136,7 +162,7 @@ public class Programa {
                                     System.out.println("O peso deve ser positivo.");
                                     break;
                                 }
-                                substituto = new Comida(nome, preco, estoque, atual.getCodigo(), peso);
+                                novosDados = new Comida(nome, preco, estoque, atual.getCodigo(), peso);
                             } else {
                                 System.out.print("Novo volume em mL: ");
                                 int volume = Integer.parseInt(scanner.nextLine().trim());
@@ -144,20 +170,20 @@ public class Programa {
                                     System.out.println("O volume deve ser positivo.");
                                     break;
                                 }
-                                substituto = new Bebida(nome, preco, estoque, atual.getCodigo(), volume);
+                                novosDados = new Bebida(nome, preco, estoque, atual.getCodigo(), volume);
                             }
-                            System.out.println(cardapio.alterarProduto(atual.getCodigo(), substituto)
+                            System.out.println(cardapio.alterarProduto(atual.getCodigo(), novosDados)
                                     ? "Produto alterado." : "Nao foi possivel alterar o produto.");
                             break;
                         }
-                        case "4": {
+                        case "4": { // Excluir um produto pelo codigo
                             System.out.print("Codigo a excluir: ");
                             int codigo = Integer.parseInt(scanner.nextLine().trim());
                             System.out.println(cardapio.excluirProduto(codigo)
                                     ? "Produto excluido." : "Produto nao encontrado.");
                             break;
                         }
-                        case "5": {
+                        case "5": { // Buscar um produto pelo atributo codigo
                             System.out.print("Codigo a buscar: ");
                             Produto produto = cardapio.buscarPorCodigo(
                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -165,7 +191,7 @@ public class Programa {
                             System.out.println(produto == null ? "Produto nao encontrado." : produto);
                             break;
                         }
-                        case "6": {
+                        case "6": { // Listar produtos ordenados pelo criterio escolhido
                             System.out.print("1 - Nome | 2 - Preco: ");
                             String criterio = scanner.nextLine().trim();
                             if (criterio.equals("1")) cardapio.exibirProdutos(cardapio.listarPorNome());
@@ -173,8 +199,8 @@ public class Programa {
                             else System.out.println("Criterio invalido.");
                             break;
                         }
-                        case "7": {
-                            boolean emPedidos = true;
+                        case "7": { // Abrir o submenu de pedidos
+                            boolean emPedidos = true; // controla a repeticao do submenu
                             while (emPedidos) {
                                 System.out.println("\n------------ PEDIDOS ------------");
                                 System.out.println("1 - Listar pedidos");
@@ -195,9 +221,10 @@ public class Programa {
                                 String opcaoPedido = scanner.nextLine().trim();
                                 try {
                                     switch (opcaoPedido) {
-                                        case "1":
+                                        case "1": // Listar todos os pedidos em tabela
                                             gerenciadorPedidos.exibirPedidos(gerenciadorPedidos.listarPedidos());
                                             break;
+                                        // Incluir (2) e alterar (4) usam a mesma leitura de itens e pagamento.
                                         case "2":
                                         case "4": {
                                             boolean alterar = opcaoPedido.equals("4");
@@ -215,6 +242,7 @@ public class Programa {
                                             }
                                             ArrayList<ItemPedido> itens = new ArrayList<>();
                                             cardapio.exibirProdutos(cardapio.listarProdutos());
+                                            // Le itens ate o usuario digitar 0.
                                             while (true) {
                                                 System.out.print("Codigo do produto (0 para terminar): ");
                                                 int codigoProduto = Integer.parseInt(scanner.nextLine().trim());
@@ -248,6 +276,7 @@ public class Programa {
                                                         : "Pedido nao criado: inclua pelo menos um item.");
                                                 break;
                                             }
+                                            // Repete a pergunta ate uma forma de pagamento valida ser escolhida.
                                             FormaPagamento pagamento = null;
                                             while (pagamento == null) {
                                                 System.out.print("Forma de pagamento: 1 - Pix | 2 - Dinheiro | 3 - Cartao: ");
@@ -280,7 +309,7 @@ public class Programa {
                                             }
                                             break;
                                         }
-                                        case "3": {
+                                        case "3": { // Buscar um pedido pelo codigo e mostrar seus itens
                                             System.out.print("Codigo a buscar: ");
                                             Pedido pedido = gerenciadorPedidos.buscarPorCodigo(
                                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -288,14 +317,14 @@ public class Programa {
                                             else pedido.exibirDetalhes();
                                             break;
                                         }
-                                        case "5": {
+                                        case "5": { // Excluir um pedido pelo codigo
                                             System.out.print("Codigo a excluir: ");
                                             int codigo = Integer.parseInt(scanner.nextLine().trim());
                                             System.out.println(gerenciadorPedidos.excluirPedido(codigo)
                                                     ? "Pedido excluido." : "Pedido nao encontrado.");
                                             break;
                                         }
-                                        case "6": {
+                                        case "6": { // Listar pedidos ordenados pelo criterio escolhido
                                             System.out.print("1 - Codigo | 2 - Total: ");
                                             String criterio = scanner.nextLine().trim();
                                             if (criterio.equals("1")) {
@@ -305,6 +334,7 @@ public class Programa {
                                             } else System.out.println("Criterio invalido.");
                                             break;
                                         }
+                                        // Mudancas de status: 7 paga, 8 conclui, 9 cancela.
                                         case "7":
                                         case "8":
                                         case "9": {
@@ -314,9 +344,10 @@ public class Programa {
                                             if (pedido == null) {
                                                 System.out.println("Pedido nao encontrado.");
                                             } else if (opcaoPedido.equals("7")) {
+                                                // Confirmar o pagamento tambem baixa o estoque dos produtos.
                                                 System.out.println(pedido.confirmarPagamento()
                                                         ? "Pagamento registrado; pedido em processamento."
-                                                        : "Pedido ja processado ou pagamento recusado.");
+                                                        : "Pedido ja processado, sem estoque suficiente ou pagamento recusado.");
                                             } else if (opcaoPedido.equals("8")) {
                                                 System.out.println(pedido.confirmarPedido()
                                                         ? "Pedido concluido."
@@ -328,7 +359,7 @@ public class Programa {
                                             }
                                             break;
                                         }
-                                        case "0":
+                                        case "0": // Voltar ao menu principal
                                             emPedidos = false;
                                             break;
                                         default:
@@ -340,7 +371,7 @@ public class Programa {
                             }
                             break;
                         }
-                        case "0":
+                        case "0": // Sair do programa
                             System.out.println("Ate logo!");
                             aberto = false;
                             break;

@@ -7,6 +7,7 @@ Sistema textual em Java para a AV3 de Programacao Orientada a Objetos (2026.2).
 - Cardapio: cadastrar, alterar, excluir, buscar por codigo, listar em tabela e ordenar por nome ou preco.
 - Pedidos: cadastrar com itens, alterar itens enquanto pendente, excluir, buscar, listar em tabela e ordenar por codigo ou total.
 - Fluxo de status: `PENDENTE` -> `PROCESSANDO` -> `CONCLUIDO`; pedidos pendentes tambem podem ser cancelados.
+- Estoque: confirmar o pagamento baixa o estoque dos produtos; sem estoque suficiente, o pagamento e recusado.
 - Formas de pagamento: Pix, dinheiro e cartao (credito ou debito). O atendente registra a confirmacao no menu; o programa nao acessa bancos nem cobra valores reais.
 - Dados iniciais: sete comidas, sete bebidas e sete pedidos. Cada pedido inicial possui dois itens.
 
@@ -16,8 +17,8 @@ Os registros ficam em memoria durante a execucao. Ao reiniciar, os dados iniciai
 
 | Conceito | Onde aparece |
 |---|---|
-| Heranca e classe abstrata | `Comida` e `Bebida` herdam de `Produto`. |
-| Polimorfismo | `toString()` e sobrescrito nas subclasses; Pix, dinheiro e cartao implementam `FormaPagamento`. |
+| Heranca e classe abstrata | `Comida` e `Bebida` herdam de `Produto`, que declara os metodos abstratos `getTipo()` e `getDetalhe()`. |
+| Polimorfismo | A tabela do cardapio chama `getTipo()`/`getDetalhe()` sem saber a subclasse; `toString()` e `atualizarDados()` sao sobrescritos; Pix, dinheiro e cartao implementam `FormaPagamento`. |
 | Interface | `FormaPagamento` define `pagar` e `getNome`. |
 | Composicao | `Pedido` guarda uma lista propria de `ItemPedido`. |
 | Injecao de dependencia | `Programa.main` entrega listas aos construtores de `Cardapio` e `GerenciadorPedidos`; cada `Pedido` recebe uma `FormaPagamento` pelo construtor. |

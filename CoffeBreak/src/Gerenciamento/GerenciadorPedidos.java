@@ -9,7 +9,7 @@ import java.util.List;
 
 /** Guarda os pedidos e centraliza suas operacoes de cadastro e consulta. */
 public class GerenciadorPedidos {
-    private final List<Pedido> pedidos;
+    private final List<Pedido> pedidos; // estrutura de dados que guarda os pedidos
 
     /** Recebe a estrutura de dados usada para guardar pedidos. */
     public GerenciadorPedidos(List<Pedido> pedidos) {
@@ -75,9 +75,11 @@ public class GerenciadorPedidos {
             System.out.println("Nenhum pedido cadastrado.");
             return;
         }
+        // Larguras fixas no printf alinham as colunas da tabela.
         System.out.printf("%-8s %-8s %12s %-14s %-18s%n",
                 "Codigo", "Itens", "Total", "Status", "Pagamento");
         for (Pedido pedido : pedidosParaExibir) {
+            // getNome() mostra a forma de pagamento sem saber qual classe concreta ela e.
             System.out.printf("%-8d %-8d %12.2f %-14s %-18s%n",
                     pedido.getCodigo(), pedido.getItens().size(), pedido.calcularTotal(),
                     pedido.getStatus(), pedido.getFormaPagamento().getNome());

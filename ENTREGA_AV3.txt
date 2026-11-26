@@ -6,7 +6,7 @@ package Entidades;
 
 /** Produto medido por volume em mililitros. */
 public class Bebida extends Produto {
-    private Integer volumeML;
+    private Integer volumeML; // volume de uma unidade, em mililitros
 
     /** Cria uma bebida usando os atributos herdados de Produto. */
     public Bebida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Integer volumeML) {
@@ -27,6 +27,25 @@ public class Bebida extends Produto {
         this.volumeML = volumeML;
     }
 
+    /** Identifica este produto como bebida na tabela do cardapio. */
+    @Override
+    public String getTipo() {
+        return "Bebida";
+    }
+
+    /** Bebidas sao medidas em mililitros. */
+    @Override
+    public String getDetalhe() {
+        return volumeML + " mL";
+    }
+
+    /** Copia os dados comuns (via super) e o volume; o Cardapio garante que novosDados e uma Bebida. */
+    @Override
+    public void atualizarDados(Produto novosDados) {
+        super.atualizarDados(novosDados);
+        setVolumeML(((Bebida) novosDados).getVolumeML());
+    }
+
     /** Acrescenta o volume a descricao herdada de Produto. */
     @Override
     public String toString() {
@@ -40,7 +59,7 @@ package Entidades;
 
 /** Produto medido por peso em gramas. */
 public class Comida extends Produto{
-    private Double pesoGramas;
+    private Double pesoGramas; // peso de uma porcao, em gramas
 
     /** Cria uma comida usando os atributos herdados de Produto. */
     public Comida(String nome, Double preco, Integer quantidadeEstoque, Integer codigo, Double pesoGramas) {
@@ -61,6 +80,25 @@ public class Comida extends Produto{
         this.pesoGramas = pesoGramas;
     }
 
+    /** Identifica este produto como comida na tabela do cardapio. */
+    @Override
+    public String getTipo() {
+        return "Comida";
+    }
+
+    /** Comidas sao medidas em gramas. */
+    @Override
+    public String getDetalhe() {
+        return pesoGramas + " g";
+    }
+
+    /** Copia os dados comuns (via super) e o peso; o Cardapio garante que novosDados e uma Comida. */
+    @Override
+    public void atualizarDados(Produto novosDados) {
+        super.atualizarDados(novosDados);
+        setPesoGramas(((Comida) novosDados).getPesoGramas());
+    }
+
     /** Acrescenta o peso a descricao herdada de Produto. */
     @Override
     public String toString() {
@@ -74,9 +112,9 @@ package Entidades;
 
 /** Um produto e sua quantidade dentro de um pedido. */
 public class ItemPedido {
-    private final Produto produto;
-    private final int quantidade;
-    private final double precoUnitario;
+    private final Produto produto;      // produto do cardapio que foi pedido
+    private final int quantidade;       // unidades pedidas desse produto
+    private final double precoUnitario; // preco copiado no momento do pedido
 
     /** Guarda o preco no momento da inclusao para preservar o valor do pedido. */
     public ItemPedido(Produto produto, int quantidade) {
@@ -121,20 +159,23 @@ import java.util.ArrayList;
 import Enums.StatusPedido;
 import Interfaces.FormaPagamento;
 
-/** Pedido composto por itens e associado a uma forma de pagamento. */
+/**
+ * Pedido composto por itens (composicao: a lista de itens pertence ao pedido)
+ * e associado a uma forma de pagamento recebida de fora (injecao de dependencia).
+ */
 public class Pedido {
-    private Integer codigo;
-    private ArrayList<ItemPedido> itens;
-    private FormaPagamento formaPagamento;
-    private StatusPedido status;
+    private Integer codigo;                // identificador unico do pedido
+    private ArrayList<ItemPedido> itens;   // itens que compoem o pedido
+    private FormaPagamento formaPagamento; // interface: Pix, dinheiro ou cartao
+    private StatusPedido status;           // etapa atual do pedido
 
     /** Recebe os itens e a forma de pagamento; nao cria essas dependencias. */
     public Pedido(Integer codigo, ArrayList<ItemPedido> itens, FormaPagamento formaPagamento) {
         setCodigo(codigo);
         validarItens(itens);
         setFormaPagamento(formaPagamento);
-        this.itens = new ArrayList<>(itens);
-        this.status = StatusPedido.PENDENTE;
+        this.itens = new ArrayList<>(itens); // copia: mudancas na lista original nao afetam o pedido
+        this.status = StatusPedido.PENDENTE; // todo pedido novo comeca pendente
     }
 
     /** Soma os subtotais de todos os itens do pedido. */
@@ -150,6 +191,7 @@ public class Pedido {
     public void exibirDetalhes() {
         System.out.println("Pedido " + codigo + " - " + status
                 + " - " + formaPagamento.getNome());
+        // Cabecalho e linhas com largura fixa formam a tabela de itens.
         System.out.printf("%-22s %8s %12s %12s%n",
                 "Produto", "Qtd.", "Preco", "Subtotal");
         for (ItemPedido item : itens) {
@@ -160,12 +202,37 @@ public class Pedido {
         System.out.printf("Total: R$ %.2f%n", calcularTotal());
     }
 
-    /** Solicita o pagamento; so avanca se a forma de pagamento aprovar. */
+    /**
+     * Solicita o pagamento e da baixa no estoque dos produtos.
+     * So avanca se o pedido estiver pendente, houver estoque e a forma de pagamento aprovar.
+     */
     public boolean confirmarPagamento() {
-        if (status != StatusPedido.PENDENTE || !formaPagamento.pagar(calcularTotal())) {
+        // Polimorfismo: pagar() executa a implementacao da forma de pagamento escolhida.
+        if (status != StatusPedido.PENDENTE || !estoqueSuficiente()
+                || !formaPagamento.pagar(calcularTotal())) {
             return false;
         }
+        // O estoque so e retirado depois de conferir todos os itens, para nao baixar pela metade.
+        for (ItemPedido item : itens) {
+            item.getProduto().removerEstoque(item.getQuantidade());
+        }
         status = StatusPedido.PROCESSANDO;
+        return true;
+    }
+
+    /** Confere se o estoque cobre o total pedido de cada produto, mesmo repetido em varios itens. */
+    private boolean estoqueSuficiente() {
+        for (ItemPedido item : itens) {
+            int unidadesDoProduto = 0;
+            for (ItemPedido outro : itens) {
+                if (outro.getProduto() == item.getProduto()) {
+                    unidadesDoProduto += outro.getQuantidade();
+                }
+            }
+            if (unidadesDoProduto > item.getProduto().getQuantidadeEstoque()) {
+                return false;
+            }
+        }
         return true;
     }
 
@@ -247,12 +314,15 @@ public class Pedido {
 ===== Entidades\Produto.java =====
 package Entidades;
 
-/** Dados e comportamentos comuns a comidas e bebidas. */
+/**
+ * Dados e comportamentos comuns a comidas e bebidas.
+ * E abstrata porque nao existe um produto "generico": todo produto e uma Comida ou uma Bebida.
+ */
 public abstract class Produto {
-    private String nome;
-    private Double preco;
-    private Integer quantidadeEstoque;
-    private Integer codigo;
+    private String nome;              // nome exibido no cardapio
+    private Double preco;             // preco atual de venda, em reais
+    private Integer quantidadeEstoque; // unidades disponiveis para venda
+    private Integer codigo;           // identificador unico usado nas buscas
 
     /** Inicializa os atributos compartilhados pelas subclasses. */
     public Produto(String nome, Double preco, Integer quantidadeEstoque, Integer codigo) {
@@ -318,6 +388,22 @@ public abstract class Produto {
         return false;
     }
 
+    /** Retorna o tipo do produto; cada subclasse informa o seu (polimorfismo). */
+    public abstract String getTipo();
+
+    /** Retorna o peso ou o volume ja formatado; cada subclasse sabe qual medida usa. */
+    public abstract String getDetalhe();
+
+    /**
+     * Copia os dados comuns de outro produto para este mesmo objeto.
+     * Alterar o objeto (em vez de troca-lo) mantem os pedidos ligados ao estoque atualizado.
+     */
+    public void atualizarDados(Produto novosDados) {
+        setNome(novosDados.getNome());
+        setPreco(novosDados.getPreco());
+        setQuantidadeEstoque(novosDados.getQuantidadeEstoque());
+    }
+
     /** Descreve os dados comuns; as subclasses acrescentam seus dados especificos. */
     @Override
     public String toString() {
@@ -334,18 +420,16 @@ package Enums;
 
 /** Etapas permitidas para o ciclo de vida de um pedido. */
 public enum StatusPedido {
-    PENDENTE,
-    PROCESSANDO,
-    CONCLUIDO,
-    CANCELADO
+    PENDENTE,    // criado; itens e pagamento ainda podem mudar
+    PROCESSANDO, // pagamento registrado e estoque baixado
+    CONCLUIDO,   // pedido entregue ao cliente
+    CANCELADO    // cancelado antes do pagamento
 }
 
 
 ===== Gerenciamento\Cardapio.java =====
 package Gerenciamento;
 
-import Entidades.Bebida;
-import Entidades.Comida;
 import Entidades.Produto;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -353,7 +437,7 @@ import java.util.List;
 
 /** Guarda e gerencia os produtos disponiveis no Coffee Break. */
 public class Cardapio {
-    private final List<Produto> produtos;
+    private final List<Produto> produtos; // estrutura de dados que guarda comidas e bebidas
 
     /** Recebe a estrutura de dados de fora para facilitar a injecao de dependencia. */
     public Cardapio(List<Produto> produtos) {
@@ -381,19 +465,19 @@ public class Cardapio {
         return null;
     }
 
-    /** Substitui um produto, mantendo seu codigo e seu tipo original. */
-    public boolean alterarProduto(int codigo, Produto substituto) {
-        if (!produtoValido(substituto) || substituto.getCodigo() != codigo) {
+    /** Altera os dados de um produto, mantendo seu codigo e seu tipo original. */
+    public boolean alterarProduto(int codigo, Produto novosDados) {
+        if (!produtoValido(novosDados) || novosDados.getCodigo() != codigo) {
             return false;
         }
-        for (int indice = 0; indice < produtos.size(); indice++) {
-            Produto atual = produtos.get(indice);
-            if (atual.getCodigo() == codigo && atual.getClass() == substituto.getClass()) {
-                produtos.set(indice, substituto);
-                return true;
-            }
+        Produto atual = buscarPorCodigo(codigo);
+        // Uma comida so pode receber dados de comida, e uma bebida so de bebida.
+        if (atual == null || atual.getClass() != novosDados.getClass()) {
+            return false;
         }
-        return false;
+        // Altera o mesmo objeto, para que os pedidos que ja usam o produto vejam o estoque novo.
+        atual.atualizarDados(novosDados);
+        return true;
     }
 
     /** Exclui um produto pelo codigo, se ele existir. */
@@ -427,16 +511,14 @@ public class Cardapio {
             System.out.println("Nenhum produto cadastrado.");
             return;
         }
+        // Larguras fixas no printf alinham as colunas da tabela.
         System.out.printf("%-6s %-8s %-22s %10s %8s %12s%n",
                 "Codigo", "Tipo", "Nome", "Preco", "Estoque", "Peso/Volume");
         for (Produto produto : produtosParaExibir) {
-            String tipo = produto instanceof Comida ? "Comida" : "Bebida";
-            String detalhe = produto instanceof Comida
-                    ? ((Comida) produto).getPesoGramas() + " g"
-                    : ((Bebida) produto).getVolumeML() + " mL";
+            // Polimorfismo: getTipo() e getDetalhe() executam a versao de Comida ou de Bebida.
             System.out.printf("%-6d %-8s %-22.22s %10.2f %8d %12s%n",
-                    produto.getCodigo(), tipo, produto.getNome(), produto.getPreco(),
-                    produto.getQuantidadeEstoque(), detalhe);
+                    produto.getCodigo(), produto.getTipo(), produto.getNome(), produto.getPreco(),
+                    produto.getQuantidadeEstoque(), produto.getDetalhe());
         }
     }
 
@@ -463,7 +545,7 @@ import java.util.List;
 
 /** Guarda os pedidos e centraliza suas operacoes de cadastro e consulta. */
 public class GerenciadorPedidos {
-    private final List<Pedido> pedidos;
+    private final List<Pedido> pedidos; // estrutura de dados que guarda os pedidos
 
     /** Recebe a estrutura de dados usada para guardar pedidos. */
     public GerenciadorPedidos(List<Pedido> pedidos) {
@@ -529,9 +611,11 @@ public class GerenciadorPedidos {
             System.out.println("Nenhum pedido cadastrado.");
             return;
         }
+        // Larguras fixas no printf alinham as colunas da tabela.
         System.out.printf("%-8s %-8s %12s %-14s %-18s%n",
                 "Codigo", "Itens", "Total", "Status", "Pagamento");
         for (Pedido pedido : pedidosParaExibir) {
+            // getNome() mostra a forma de pagamento sem saber qual classe concreta ela e.
             System.out.printf("%-8d %-8d %12.2f %-14s %-18s%n",
                     pedido.getCodigo(), pedido.getItens().size(), pedido.calcularTotal(),
                     pedido.getStatus(), pedido.getFormaPagamento().getNome());
@@ -543,7 +627,10 @@ public class GerenciadorPedidos {
 ===== Interfaces\FormaPagamento.java =====
 package Interfaces;
 
-/** Contrato das formas de pagamento registradas pelo atendente. */
+/**
+ * Contrato das formas de pagamento registradas pelo atendente.
+ * Pedido depende desta interface, nao de Pix, dinheiro ou cartao (inversao de dependencia).
+ */
 public interface FormaPagamento {
     /** Valida o valor informado para registrar o pagamento. */
     boolean pagar(double valor);
@@ -560,12 +647,13 @@ import Interfaces.FormaPagamento;
 
 /** Registro manual de um pagamento com cartao de credito ou debito. */
 public class PagamentoCartao implements FormaPagamento {
+    /** Modalidades de cartao aceitas pelo Coffee Break. */
     public enum Tipo {
         CREDITO,
         DEBITO
     }
 
-    private final Tipo tipo;
+    private final Tipo tipo; // modalidade fixa deste objeto: credito ou debito
 
     /** Define a modalidade escolhida antes de associar o pagamento ao pedido. */
     public PagamentoCartao(Tipo tipo) {
@@ -596,11 +684,13 @@ import Interfaces.FormaPagamento;
 
 /** Registro manual de um pagamento em dinheiro. */
 public class PagamentoDinheiro implements FormaPagamento {
+    /** Aprova o registro quando o valor recebido em dinheiro e positivo. */
     @Override
     public boolean pagar(double valor) {
         return Double.isFinite(valor) && valor > 0;
     }
 
+    /** Nome desta forma de pagamento nos menus e tabelas. */
     @Override
     public String getNome() {
         return "Dinheiro";
@@ -615,11 +705,13 @@ import Interfaces.FormaPagamento;
 
 /** Registro manual de um pagamento em Pix, sem conexao bancaria. */
 public class PagamentoPix implements FormaPagamento {
+    /** Aprova o registro quando o valor transferido por Pix e positivo. */
     @Override
     public boolean pagar(double valor) {
         return Double.isFinite(valor) && valor > 0;
     }
 
+    /** Nome desta forma de pagamento nos menus e tabelas. */
     @Override
     public String getNome() {
         return "Pix";
@@ -647,12 +739,29 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 
-/** Ponto de entrada: cria as dependencias e conduz os menus pelo terminal. */
+/**
+ * COFFEE BREAK - sistema textual de cadastro e gerenciamento de uma lanchonete.
+ *
+ * O que o programa faz:
+ * - Cardapio: incluir, alterar, excluir, buscar por codigo, listar em tabela e
+ *   listar ordenado por nome ou preco as comidas e bebidas.
+ * - Pedidos: incluir com varios itens, alterar enquanto pendente, excluir, buscar,
+ *   listar em tabela e ordenar por codigo ou total.
+ * - Fluxo do pedido: PENDENTE -> PROCESSANDO (pagamento registrado e estoque baixado)
+ *   -> CONCLUIDO; um pedido pendente tambem pode ser CANCELADO.
+ * - Ao iniciar, cadastra 7 comidas, 7 bebidas e 7 pedidos para testes.
+ * Os registros ficam em listas (ArrayList) na memoria enquanto o programa roda.
+ *
+ * Esta e a classe principal. Ela cria todas as dependencias e as entrega aos objetos
+ * (inversao de controle) e conduz os menus pelo terminal.
+ */
 public class Programa {
+    /** Monta os objetos, cadastra os dados iniciais e repete o menu principal ate o usuario sair. */
     public static void main(String[] args) {
-        // O main fornece listas e formas de pagamento aos objetos que dependem delas.
+        // Inversao de controle: o main cria as dependencias concretas e as injeta nos construtores.
         Cardapio cardapio = new Cardapio(new ArrayList<>());
         GerenciadorPedidos gerenciadorPedidos = new GerenciadorPedidos(new ArrayList<>());
+        // Formas de pagamento disponiveis, todas guardadas pelo tipo da interface.
         List<FormaPagamento> pagamentos = new ArrayList<>();
         pagamentos.add(new PagamentoPix());
         pagamentos.add(new PagamentoDinheiro());
@@ -674,16 +783,19 @@ public class Programa {
         cardapio.adicionarProduto(new Bebida("Agua", 3.00, 40, 12, 500));
         cardapio.adicionarProduto(new Bebida("Refrigerante", 6.00, 24, 13, 350));
         cardapio.adicionarProduto(new Bebida("Chocolate quente", 9.00, 15, 14, 250));
+        // Cria 7 pedidos: cada um tem a comida de codigo N e a bebida de codigo N + 7.
         for (int codigo = 1; codigo <= 7; codigo++) {
             ArrayList<ItemPedido> itens = new ArrayList<>();
             itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo), codigo % 3 + 1));
             itens.add(new ItemPedido(cardapio.buscarPorCodigo(codigo + 7), 1));
+            // Alterna as formas de pagamento entre os pedidos iniciais.
             gerenciadorPedidos.adicionarPedido(
                     new Pedido(codigo, itens, pagamentos.get((codigo - 1) % pagamentos.size())));
         }
 
+        // try-with-resources fecha o Scanner automaticamente ao sair.
         try (Scanner scanner = new Scanner(System.in)) {
-            boolean aberto = true;
+            boolean aberto = true; // controla a repeticao do menu principal
             while (aberto) {
                 System.out.println("\n========== COFFEE BREAK ==========");
                 System.out.println("1 - Listar produtos");
@@ -695,15 +807,16 @@ public class Programa {
                 System.out.println("7 - Gerenciar pedidos");
                 System.out.println("0 - Sair");
                 System.out.print("Opcao: ");
-                if (!scanner.hasNextLine()) break;
+                if (!scanner.hasNextLine()) break; // entrada encerrada: sai do programa
                 String opcao = scanner.nextLine().trim();
 
+                // Erros de digitacao (ex.: letra no lugar de numero) sao tratados no catch abaixo.
                 try {
                     switch (opcao) {
-                        case "1":
+                        case "1": // Listar todos os produtos em tabela
                             cardapio.exibirProdutos(cardapio.listarProdutos());
                             break;
-                        case "2": {
+                        case "2": { // Incluir uma comida ou uma bebida
                             System.out.print("1 - Comida | 2 - Bebida: ");
                             int tipo = Integer.parseInt(scanner.nextLine().trim());
                             if (tipo != 1 && tipo != 2) {
@@ -712,6 +825,7 @@ public class Programa {
                             }
                             System.out.print("Codigo: ");
                             int codigo = Integer.parseInt(scanner.nextLine().trim());
+                            // O codigo identifica o produto, entao nao pode repetir.
                             if (codigo <= 0 || cardapio.buscarPorCodigo(codigo) != null) {
                                 System.out.println("O codigo deve ser positivo e ainda nao utilizado.");
                                 break;
@@ -719,10 +833,11 @@ public class Programa {
                             System.out.print("Nome: ");
                             String nome = scanner.nextLine().trim();
                             System.out.print("Preco: ");
+                            // Aceita virgula ou ponto como separador decimal.
                             double preco = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
                             System.out.print("Quantidade em estoque: ");
                             int estoque = Integer.parseInt(scanner.nextLine().trim());
-                            Produto novo;
+                            Produto novo; // tipo da superclasse guarda Comida ou Bebida
                             if (tipo == 1) {
                                 System.out.print("Peso em gramas: ");
                                 double peso = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
@@ -740,11 +855,12 @@ public class Programa {
                                 }
                                 novo = new Bebida(nome, preco, estoque, codigo, volume);
                             }
+                            // O Cardapio valida nome, preco e estoque antes de incluir.
                             System.out.println(cardapio.adicionarProduto(novo)
                                     ? "Produto cadastrado." : "Dados do produto invalidos.");
                             break;
                         }
-                        case "3": {
+                        case "3": { // Alterar os dados de um produto existente
                             System.out.print("Codigo a alterar: ");
                             Produto atual = cardapio.buscarPorCodigo(
                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -758,7 +874,9 @@ public class Programa {
                             double preco = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
                             System.out.print("Novo estoque: ");
                             int estoque = Integer.parseInt(scanner.nextLine().trim());
-                            Produto substituto;
+                            // Objeto temporario com os novos dados; o tipo e o codigo continuam os mesmos.
+                            Produto novosDados;
+                            // O menu precisa saber o tipo para perguntar peso (comida) ou volume (bebida).
                             if (atual instanceof Comida) {
                                 System.out.print("Novo peso em gramas: ");
                                 double peso = Double.parseDouble(scanner.nextLine().trim().replace(',', '.'));
@@ -766,7 +884,7 @@ public class Programa {
                                     System.out.println("O peso deve ser positivo.");
                                     break;
                                 }
-                                substituto = new Comida(nome, preco, estoque, atual.getCodigo(), peso);
+                                novosDados = new Comida(nome, preco, estoque, atual.getCodigo(), peso);
                             } else {
                                 System.out.print("Novo volume em mL: ");
                                 int volume = Integer.parseInt(scanner.nextLine().trim());
@@ -774,20 +892,20 @@ public class Programa {
                                     System.out.println("O volume deve ser positivo.");
                                     break;
                                 }
-                                substituto = new Bebida(nome, preco, estoque, atual.getCodigo(), volume);
+                                novosDados = new Bebida(nome, preco, estoque, atual.getCodigo(), volume);
                             }
-                            System.out.println(cardapio.alterarProduto(atual.getCodigo(), substituto)
+                            System.out.println(cardapio.alterarProduto(atual.getCodigo(), novosDados)
                                     ? "Produto alterado." : "Nao foi possivel alterar o produto.");
                             break;
                         }
-                        case "4": {
+                        case "4": { // Excluir um produto pelo codigo
                             System.out.print("Codigo a excluir: ");
                             int codigo = Integer.parseInt(scanner.nextLine().trim());
                             System.out.println(cardapio.excluirProduto(codigo)
                                     ? "Produto excluido." : "Produto nao encontrado.");
                             break;
                         }
-                        case "5": {
+                        case "5": { // Buscar um produto pelo atributo codigo
                             System.out.print("Codigo a buscar: ");
                             Produto produto = cardapio.buscarPorCodigo(
                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -795,7 +913,7 @@ public class Programa {
                             System.out.println(produto == null ? "Produto nao encontrado." : produto);
                             break;
                         }
-                        case "6": {
+                        case "6": { // Listar produtos ordenados pelo criterio escolhido
                             System.out.print("1 - Nome | 2 - Preco: ");
                             String criterio = scanner.nextLine().trim();
                             if (criterio.equals("1")) cardapio.exibirProdutos(cardapio.listarPorNome());
@@ -803,8 +921,8 @@ public class Programa {
                             else System.out.println("Criterio invalido.");
                             break;
                         }
-                        case "7": {
-                            boolean emPedidos = true;
+                        case "7": { // Abrir o submenu de pedidos
+                            boolean emPedidos = true; // controla a repeticao do submenu
                             while (emPedidos) {
                                 System.out.println("\n------------ PEDIDOS ------------");
                                 System.out.println("1 - Listar pedidos");
@@ -825,9 +943,10 @@ public class Programa {
                                 String opcaoPedido = scanner.nextLine().trim();
                                 try {
                                     switch (opcaoPedido) {
-                                        case "1":
+                                        case "1": // Listar todos os pedidos em tabela
                                             gerenciadorPedidos.exibirPedidos(gerenciadorPedidos.listarPedidos());
                                             break;
+                                        // Incluir (2) e alterar (4) usam a mesma leitura de itens e pagamento.
                                         case "2":
                                         case "4": {
                                             boolean alterar = opcaoPedido.equals("4");
@@ -845,6 +964,7 @@ public class Programa {
                                             }
                                             ArrayList<ItemPedido> itens = new ArrayList<>();
                                             cardapio.exibirProdutos(cardapio.listarProdutos());
+                                            // Le itens ate o usuario digitar 0.
                                             while (true) {
                                                 System.out.print("Codigo do produto (0 para terminar): ");
                                                 int codigoProduto = Integer.parseInt(scanner.nextLine().trim());
@@ -878,6 +998,7 @@ public class Programa {
                                                         : "Pedido nao criado: inclua pelo menos um item.");
                                                 break;
                                             }
+                                            // Repete a pergunta ate uma forma de pagamento valida ser escolhida.
                                             FormaPagamento pagamento = null;
                                             while (pagamento == null) {
                                                 System.out.print("Forma de pagamento: 1 - Pix | 2 - Dinheiro | 3 - Cartao: ");
@@ -910,7 +1031,7 @@ public class Programa {
                                             }
                                             break;
                                         }
-                                        case "3": {
+                                        case "3": { // Buscar um pedido pelo codigo e mostrar seus itens
                                             System.out.print("Codigo a buscar: ");
                                             Pedido pedido = gerenciadorPedidos.buscarPorCodigo(
                                                     Integer.parseInt(scanner.nextLine().trim()));
@@ -918,14 +1039,14 @@ public class Programa {
                                             else pedido.exibirDetalhes();
                                             break;
                                         }
-                                        case "5": {
+                                        case "5": { // Excluir um pedido pelo codigo
                                             System.out.print("Codigo a excluir: ");
                                             int codigo = Integer.parseInt(scanner.nextLine().trim());
                                             System.out.println(gerenciadorPedidos.excluirPedido(codigo)
                                                     ? "Pedido excluido." : "Pedido nao encontrado.");
                                             break;
                                         }
-                                        case "6": {
+                                        case "6": { // Listar pedidos ordenados pelo criterio escolhido
                                             System.out.print("1 - Codigo | 2 - Total: ");
                                             String criterio = scanner.nextLine().trim();
                                             if (criterio.equals("1")) {
@@ -935,6 +1056,7 @@ public class Programa {
                                             } else System.out.println("Criterio invalido.");
                                             break;
                                         }
+                                        // Mudancas de status: 7 paga, 8 conclui, 9 cancela.
                                         case "7":
                                         case "8":
                                         case "9": {
@@ -944,9 +1066,10 @@ public class Programa {
                                             if (pedido == null) {
                                                 System.out.println("Pedido nao encontrado.");
                                             } else if (opcaoPedido.equals("7")) {
+                                                // Confirmar o pagamento tambem baixa o estoque dos produtos.
                                                 System.out.println(pedido.confirmarPagamento()
                                                         ? "Pagamento registrado; pedido em processamento."
-                                                        : "Pedido ja processado ou pagamento recusado.");
+                                                        : "Pedido ja processado, sem estoque suficiente ou pagamento recusado.");
                                             } else if (opcaoPedido.equals("8")) {
                                                 System.out.println(pedido.confirmarPedido()
                                                         ? "Pedido concluido."
@@ -958,7 +1081,7 @@ public class Programa {
                                             }
                                             break;
                                         }
-                                        case "0":
+                                        case "0": // Voltar ao menu principal
                                             emPedidos = false;
                                             break;
                                         default:
@@ -970,7 +1093,7 @@ public class Programa {
                             }
                             break;
                         }
-                        case "0":
+                        case "0": // Sair do programa
                             System.out.println("Ate logo!");
                             aberto = false;
                             break;

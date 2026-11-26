@@ -1,7 +1,5 @@
 package Gerenciamento;
 
-import Entidades.Bebida;
-import Entidades.Comida;
 import Entidades.Produto;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -9,7 +7,7 @@ import java.util.List;
 
 /** Guarda e gerencia os produtos disponiveis no Coffee Break. */
 public class Cardapio {
-    private final List<Produto> produtos;
+    private final List<Produto> produtos; // estrutura de dados que guarda comidas e bebidas
 
     /** Recebe a estrutura de dados de fora para facilitar a injecao de dependencia. */
     public Cardapio(List<Produto> produtos) {
@@ -37,19 +35,19 @@ public class Cardapio {
         return null;
     }
 
-    /** Substitui um produto, mantendo seu codigo e seu tipo original. */
-    public boolean alterarProduto(int codigo, Produto substituto) {
-        if (!produtoValido(substituto) || substituto.getCodigo() != codigo) {
+    /** Altera os dados de um produto, mantendo seu codigo e seu tipo original. */
+    public boolean alterarProduto(int codigo, Produto novosDados) {
+        if (!produtoValido(novosDados) || novosDados.getCodigo() != codigo) {
             return false;
         }
-        for (int indice = 0; indice < produtos.size(); indice++) {
-            Produto atual = produtos.get(indice);
-            if (atual.getCodigo() == codigo && atual.getClass() == substituto.getClass()) {
-                produtos.set(indice, substituto);
-                return true;
-            }
+        Produto atual = buscarPorCodigo(codigo);
+        // Uma comida so pode receber dados de comida, e uma bebida so de bebida.
+        if (atual == null || atual.getClass() != novosDados.getClass()) {
+            return false;
         }
-        return false;
+        // Altera o mesmo objeto, para que os pedidos que ja usam o produto vejam o estoque novo.
+        atual.atualizarDados(novosDados);
+        return true;
     }
 
     /** Exclui um produto pelo codigo, se ele existir. */
@@ -83,16 +81,14 @@ public class Cardapio {
             System.out.println("Nenhum produto cadastrado.");
             return;
         }
+        // Larguras fixas no printf alinham as colunas da tabela.
         System.out.printf("%-6s %-8s %-22s %10s %8s %12s%n",
                 "Codigo", "Tipo", "Nome", "Preco", "Estoque", "Peso/Volume");
         for (Produto produto : produtosParaExibir) {
-            String tipo = produto instanceof Comida ? "Comida" : "Bebida";
-            String detalhe = produto instanceof Comida
-                    ? ((Comida) produto).getPesoGramas() + " g"
-                    : ((Bebida) produto).getVolumeML() + " mL";
+            // Polimorfismo: getTipo() e getDetalhe() executam a versao de Comida ou de Bebida.
             System.out.printf("%-6d %-8s %-22.22s %10.2f %8d %12s%n",
-                    produto.getCodigo(), tipo, produto.getNome(), produto.getPreco(),
-                    produto.getQuantidadeEstoque(), detalhe);
+                    produto.getCodigo(), produto.getTipo(), produto.getNome(), produto.getPreco(),
+                    produto.getQuantidadeEstoque(), produto.getDetalhe());
         }
     }
 
